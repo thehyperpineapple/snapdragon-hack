@@ -44,7 +44,7 @@ sealed class Screen(val route: String, val label: String, val icon: androidx.com
     object Home : Screen("home", "Home", Icons.Default.Home)
     object Profile : Screen("profile", "Profile", Icons.Default.Person)
     object Messages : Screen("messages", "Messages", Icons.Default.Chat)
-    object Camera : Screen("camera", "Camera", Icons.Default.CameraAlt)
+    object Reminders : Screen("reminders", "Reminders", Icons.Default.Alarm)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
 }
 
@@ -53,7 +53,7 @@ val bottomNavItems = listOf(
     Screen.Home,
     Screen.Profile,
     Screen.Messages,
-    Screen.Camera,
+    Screen.Reminders,
     Screen.Settings
 )
 
@@ -72,6 +72,7 @@ fun MainScreen() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Home.route) { HomeScreen() }
+            composable(Screen.Reminders.route) { RemindersScreen() }
             // make screens here guys!
             //composable(Screen.Profile.route) { ProfileScreen() }
             //composable(Screen.Messages.route) { MessagesScreen() }
