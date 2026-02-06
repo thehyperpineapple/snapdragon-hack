@@ -42,6 +42,9 @@ class MainActivity : ComponentActivity() {
 
 /* -------------------- Screens & Routes -------------------- */
 sealed class Screen(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    object Auth : Screen("auth", "Auth", Icons.Default.Info)
+    object Login : Screen("login", "Login", Icons.Default.Info)
+    object SignUp : Screen("signup", "SignUp", Icons.Default.Info)
     object Welcome : Screen("welcome", "Welcome", Icons.Default.Info)
     object Home : Screen("home", "Home", Icons.Default.Home)
     object Profile : Screen("profile", "Profile", Icons.Default.Person)
@@ -81,16 +84,40 @@ fun MainScreen() {
     Scaffold(
         containerColor = DarkBlue, // Dark blue background
         bottomBar = {
-            if (currentRoute != Screen.Welcome.route) {
+            if (currentRoute !in listOf(
+                Screen.Auth.route,
+                Screen.Login.route,
+                Screen.SignUp.route,
+                Screen.Welcome.route
+            )) {
                 BottomNavigationBar(navController = navController)
             }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Welcome.route,
+            startDestination = Screen.Auth.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Auth.route) {
+                AuthScreen(
+                    onLoginClick = { navController.navigate(Screen.Login.route) },
+                    onSignUpClick = { navController.navigate(Screen.SignUp.route) },
+                    onDevSkipClick = { navController.navigate(Screen.Home.route) }
+                )
+            }
+            composable(Screen.Login.route) {
+                LoginScreen(
+                    onLoginSuccess = { navController.navigate(Screen.Welcome.route) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.SignUp.route) {
+                SignUpScreen(
+                    onSignUpSuccess = { navController.navigate(Screen.Welcome.route) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
             composable(Screen.Welcome.route) {
                 WelcomeScreen(
                     name = name,
