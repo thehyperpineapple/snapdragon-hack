@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -21,6 +22,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.snap_app.ui.theme.Snap_appTheme
 
+// Custom color scheme
+val DarkBlue = Color(0xFF0A1929)
+val NeonPink = Color(0xFFFF10F0)
+val Purple = Color(0xFF9C27B0)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,6 +63,7 @@ fun MainScreen() {
     val navController = rememberNavController()
 
     Scaffold(
+        containerColor = DarkBlue, // Dark blue background
         bottomBar = { BottomNavigationBar(navController = navController) }
     ) { innerPadding ->
         NavHost(
@@ -66,10 +72,11 @@ fun MainScreen() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Home.route) { HomeScreen() }
-            composable(Screen.Profile.route) { ProfileScreen() }
-            composable(Screen.Messages.route) { MessagesScreen() }
-            composable(Screen.Camera.route) { CameraScreen() }
-            composable(Screen.Settings.route) { SettingsScreen() }
+            // make screens here guys!
+            //composable(Screen.Profile.route) { ProfileScreen() }
+            //composable(Screen.Messages.route) { MessagesScreen() }
+            //composable(Screen.Camera.route) { CameraScreen() }
+            //composable(Screen.Settings.route) { SettingsScreen() }
         }
     }
 }
@@ -80,12 +87,22 @@ fun BottomNavigationBar(navController: NavHostController) {
     val currentBackStack by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStack?.destination?.route
 
-    NavigationBar {
+    NavigationBar(
+        containerColor = DarkBlue.copy(alpha = 0.95f),
+        contentColor = NeonPink
+    ) {
         bottomNavItems.forEach { screen ->
             NavigationBarItem(
                 icon = { Icon(screen.icon, contentDescription = screen.label) },
                 label = { Text(screen.label) },
                 selected = currentRoute == screen.route,
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = NeonPink,
+                    selectedTextColor = NeonPink,
+                    unselectedIconColor = Purple,
+                    unselectedTextColor = Purple,
+                    indicatorColor = Purple.copy(alpha = 0.3f)
+                ),
                 onClick = {
                     navController.navigate(screen.route) {
                         // Pop up to the start destination of the graph to avoid building up a large back stack
@@ -103,30 +120,7 @@ fun BottomNavigationBar(navController: NavHostController) {
     }
 }
 
-/* -------------------- Screen Composables -------------------- */
-@Composable
-fun HomeScreen() = ScreenLayout("Home Screen")
-@Composable
-fun ProfileScreen() = ScreenLayout("Profile Screen")
-@Composable
-fun MessagesScreen() = ScreenLayout("Messages Screen")
-@Composable
-fun CameraScreen() = ScreenLayout("Camera Screen")
-@Composable
-fun SettingsScreen() = ScreenLayout("Settings Screen")
 
-/* -------------------- Reusable Layout -------------------- */
-@Composable
-fun ScreenLayout(title: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = title, style = MaterialTheme.typography.headlineMedium)
-    }
-}
 
 /* -------------------- Preview -------------------- */
 @Preview(showBackground = true)
