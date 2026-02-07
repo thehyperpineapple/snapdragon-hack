@@ -4,3 +4,10 @@ google-cloud-firestore==2.14.0
 python-dotenv==1.0.1
 flask-cors==4.0.0
 gunicorn==21.2.0
+
+# AI/ML Dependencies for Qualcomm NPU Integration
+onnxruntime-qnn>=1.16.0  # QNN Execution Provider for Snapdragon NPU
+transformers>=4.35.0     # HuggingFace transformers for tokenization
+torch>=2.0.0            # PyTorch (required by transformers)
+numpy>=1.24.0           # Numerical operations
+optimum[onnxruntime]>=1.14.0  # ONNX model optimization
