@@ -49,6 +49,11 @@ android {
         compose = true
         buildConfig = true
     }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true  // Extract native libs to disk so genie-t2t-run can be executed
+        }
+    }
 }
 
 dependencies {
