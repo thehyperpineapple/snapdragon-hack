@@ -25,16 +25,16 @@ Together, these models continuously adjust recommendations based on user activit
 
 **Note on Testing and Documentation:** We have dedicated unit tests for our frontend and thorough documentation throughout the repository. 
 
-**Feature Information**
-- Sign up/ Login Features for data security
-- Preferences, health data, goals initial self reporting to use for fitness app
-- Home screen that presents a **silly cat meme** (sad, indifferent, happy) based on how many reminders were addressed (with food, workouts, water)
-- Chat screen to talk to the Chat Q/A agent (model hosted on phone) about health/fitnes
-- Nutrition screen with a personalized nutrition plan based on dietary restrictions, personal data, and fitness goals
-- Gym screen with personalized exercise plan for the week split into three different workouts
-- Reminders screen to log the daily meals, water consumption, and exercises of the user (Sends notifications to the phone at the relevant times of the day to prompt the user to log these)
-- Settings Screen to modify profile information
-- **Bonus** Donut Finder Screen! We're confident our users will be on track with their diet and fitness goals. As such, we provided a donut finder feature to show the donut shops around wherever the user is at any time :)
+## Feature Information
+- **Sign up/ Login** Features for data security
+- Preferences, health data, goals **initial self reporting** to use for fitness app
+- **Home screen** that presents a **silly cat meme** (sad, indifferent, happy) based on how many reminders were addressed (with food, workouts, water)
+- **Chat screen** to talk to the Chat Q/A agent (model hosted on phone) about health/fitnes
+- **Nutrition screen** with a personalized nutrition plan based on dietary restrictions, personal data, and fitness goals
+- **Gym screen** with personalized exercise plan for the week split into three different workouts
+- **Reminders screen** to log the daily meals, water consumption, and exercises of the user (Sends notifications to the phone at the relevant times of the day to prompt the user to log these)
+- **Settings Screen** to modify profile information
+- **Bonus Donut Finder Screen!** We're confident our users will be on track with their diet and fitness goals. As such, we provided a donut finder feature to show the donut shops around wherever the user is at any time :)
 
 ---
 
