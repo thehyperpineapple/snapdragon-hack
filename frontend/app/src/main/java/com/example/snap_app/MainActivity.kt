@@ -85,6 +85,7 @@ fun MainScreen() {
     var gender by rememberSaveable { mutableStateOf("") }
     var height by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
+    var age by rememberSaveable { mutableStateOf("") }
 
     var workoutsPerWeek by rememberSaveable { mutableStateOf("") }
     var workoutDuration by rememberSaveable { mutableStateOf("") }
@@ -130,18 +131,28 @@ fun MainScreen() {
             }
             composable(Screen.Login.route) {
                 LoginScreen(
-                    onLoginSuccess = { navController.navigate(Screen.Welcome.route) },
-                    onBack = { navController.popBackStack() }
+                    onLoginSuccess = { userId, email, username ->
+                        viewModel.setUser(userId, email, username)
+                        viewModel.fetchPlan()
+                        navController.navigate(Screen.Home.route)
+                    },
+                    onBack = { navController.popBackStack() },
+                    onSignUpClick = { navController.navigate(Screen.SignUp.route) }
                 )
             }
             composable(Screen.SignUp.route) {
                 SignUpScreen(
-                    onSignUpSuccess = { navController.navigate(Screen.Welcome.route) },
-                    onBack = { navController.popBackStack() }
+                    onSignUpSuccess = { userId, email, username ->
+                        viewModel.setUser(userId, email, username)
+                        navController.navigate(Screen.Welcome.route)
+                    },
+                    onBack = { navController.popBackStack() },
+                    onLoginClick = { navController.navigate(Screen.Login.route) }
                 )
             }
             composable(Screen.Welcome.route) {
                 WelcomeScreen(
+                    viewModel = viewModel,
                     name = name,
                     onNameChange = { name = it },
                     gender = gender,
@@ -150,6 +161,8 @@ fun MainScreen() {
                     onHeightChange = { height = it },
                     weight = weight,
                     onWeightChange = { weight = it },
+                    age = age,
+                    onAgeChange = { age = it },
                     workoutsPerWeek = workoutsPerWeek,
                     onWorkoutsPerWeekChange = { workoutsPerWeek = it },
                     workoutDuration = workoutDuration,
@@ -184,16 +197,24 @@ fun MainScreen() {
                 )
             }
             composable(Screen.Reminders.route) { RemindersScreen(viewModel = viewModel)}
-            composable(Screen.Gym.route) { GymScreen() }
-            composable(Screen.Nutrition.route) { NutritionScreen() }
+            composable(Screen.Gym.route) { GymScreen(viewModel = viewModel) }
+            composable(Screen.Nutrition.route) { NutritionScreen(viewModel = viewModel) }
             composable(Screen.DonutShops.route) {
                 DonutShopsScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Profile.route) { ScreenLayout("Profile") }
             composable(Screen.Settings.route) {
+                val displayName = viewModel.username.collectAsState().value.ifBlank { name.ifBlank { "User" } }
                 SettingsScreen(
-                    userName = name,
-                    onBack = { navController.popBackStack() }
+                    userName = displayName,
+                    onBack = { navController.popBackStack() },
+                    onLogout = {
+                        viewModel.logout {
+                            navController.navigate(Screen.Auth.route) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    }
                 )
             }
             composable(Screen.Chat.route) { ChatScreen() }

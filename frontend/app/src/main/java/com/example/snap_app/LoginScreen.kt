@@ -26,16 +26,21 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
-    onBack: () -> Unit
+    onLoginSuccess: (userId: String, email: String, username: String) -> Unit,
+    onBack: () -> Unit,
+    onSignUpClick: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     // Animated floating orbs
     val infiniteTransition = rememberInfiniteTransition(label = "float")
@@ -255,7 +260,7 @@ fun LoginScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "⚠️ Invalid credentials. Use admin/admin",
+                            text = "⚠️ $errorMessage",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(12.dp)
@@ -268,16 +273,33 @@ fun LoginScreen(
                 // Login button
                 Button(
                     onClick = {
-                        if (email == "admin" && password == "admin") {
-                            onLoginSuccess()
-                        } else {
-                            showError = true
+                        isLoading = true
+                        showError = false
+                        scope.launch {
+                            try {
+                                val response = ApiService.loginUser(email, password)
+                                isLoading = false
+                                if (response?.user_id != null) {
+                                    onLoginSuccess(
+                                        response.user_id,
+                                        response.email ?: email,
+                                        response.username ?: ""
+                                    )
+                                } else {
+                                    errorMessage = response?.message ?: "Invalid credentials"
+                                    showError = true
+                                }
+                            } catch (e: Exception) {
+                                isLoading = false
+                                errorMessage = "Network error: ${e.message}"
+                                showError = true
+                            }
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp),
-                    enabled = email.isNotBlank() && password.isNotBlank(),
+                    enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Transparent,
                         disabledContainerColor = Purple.copy(alpha = 0.3f)
@@ -295,16 +317,44 @@ fun LoginScreen(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "Login",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Text(
+                                text = "Login",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        }
                     }
                 }
             }
         }
+
+            // Sign Up link
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Don't have an account? ",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 14.sp
+                )
+                TextButton(onClick = onSignUpClick) {
+                    Text(
+                        text = "Sign Up",
+                        color = NeonPink,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
         }

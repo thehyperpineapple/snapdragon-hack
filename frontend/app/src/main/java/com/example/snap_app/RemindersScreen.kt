@@ -36,7 +36,12 @@ data class MealReminder(
 
 @Composable
 fun RemindersScreen(viewModel: AppViewModel) {
-    var reminders by remember { mutableStateOf(generateReminders()) }
+    val nutritionPlan by viewModel.nutritionPlan.collectAsState()
+    val workoutPlan by viewModel.workoutPlan.collectAsState()
+
+    var reminders by remember(nutritionPlan, workoutPlan) {
+        mutableStateOf(generateRemindersFromPlan(nutritionPlan, workoutPlan))
+    }
     var showDialog by remember { mutableStateOf(false) }
     var selectedReminder by remember { mutableStateOf<MealReminder?>(null) }
     var alternateFood by remember { mutableStateOf("") }
@@ -47,7 +52,7 @@ fun RemindersScreen(viewModel: AppViewModel) {
     LaunchedEffect(Unit) {
         val currentDate = getCurrentDate()
         if (currentDate != lastResetDate) {
-            reminders = generateReminders()
+            reminders = generateRemindersFromPlan(nutritionPlan, workoutPlan)
             lastResetDate = currentDate
         }
     }
@@ -461,16 +466,23 @@ fun ReminderItem(
     }
 }
 
-// Generate reminders with time windows
-fun generateReminders(): List<MealReminder> {
+// Generate reminders dynamically from the user's actual plan data
+fun generateRemindersFromPlan(
+    nutritionPlan: List<DietWeek>,
+    workoutPlan: List<WorkoutData>
+): List<MealReminder> {
     val reminders = mutableListOf<MealReminder>()
     var id = 0
 
+    // Use the first week's meals from the plan, or generic names if no plan
+    val currentWeek = nutritionPlan.firstOrNull()
+
     // Breakfast
+    val breakfastName = currentWeek?.breakfast?.aiDesc?.takeIf { it.isNotBlank() } ?: "Breakfast"
     reminders.add(
         MealReminder(
             id = id++,
-            name = "🍽️ Breakfast",
+            name = "🍽️ $breakfastName",
             type = "meal",
             timeWindow = "7:00 AM - 9:00 AM"
         )
@@ -485,10 +497,11 @@ fun generateReminders(): List<MealReminder> {
     )
 
     // Lunch
+    val lunchName = currentWeek?.lunch?.aiDesc?.takeIf { it.isNotBlank() } ?: "Lunch"
     reminders.add(
         MealReminder(
             id = id++,
-            name = "🍽️ Lunch",
+            name = "🍽️ $lunchName",
             type = "meal",
             timeWindow = "12:00 PM - 2:00 PM"
         )
@@ -503,10 +516,11 @@ fun generateReminders(): List<MealReminder> {
     )
 
     // Dinner
+    val dinnerName = currentWeek?.dinner?.aiDesc?.takeIf { it.isNotBlank() } ?: "Dinner"
     reminders.add(
         MealReminder(
             id = id++,
-            name = "🍽️ Dinner",
+            name = "🍽️ $dinnerName",
             type = "meal",
             timeWindow = "6:00 PM - 8:00 PM"
         )
@@ -520,11 +534,18 @@ fun generateReminders(): List<MealReminder> {
         )
     )
 
-    // Gym
+    // Gym - use first workout from plan
+    val currentWorkout = workoutPlan.firstOrNull()
+    val workoutDesc = if (currentWorkout != null) {
+        val exerciseNames = currentWorkout.exercises.take(3).joinToString(", ") { it.name }
+        if (exerciseNames.isNotBlank()) exerciseNames else "Gym Workout"
+    } else {
+        "Gym Workout"
+    }
     reminders.add(
         MealReminder(
             id = id++,
-            name = "🏋️ Gym Workout",
+            name = "🏋️ $workoutDesc",
             type = "gym",
             timeWindow = "5:00 PM - 7:00 PM"
         )

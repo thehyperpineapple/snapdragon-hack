@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,9 +40,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 fun WelcomeScreen(
+    viewModel: AppViewModel,
     name: String,
     onNameChange: (String) -> Unit,
     gender: String,
@@ -50,6 +53,8 @@ fun WelcomeScreen(
     onHeightChange: (String) -> Unit,
     weight: String,
     onWeightChange: (String) -> Unit,
+    age: String,
+    onAgeChange: (String) -> Unit,
     workoutsPerWeek: String,
     onWorkoutsPerWeekChange: (String) -> Unit,
     workoutDuration: String,
@@ -63,15 +68,16 @@ fun WelcomeScreen(
     onContinue: () -> Unit
 ) {
     var stepIndex by remember { mutableStateOf(0) }
-    val totalSteps = 9
+    val totalSteps = 10
     var heightUnit by remember { mutableStateOf("cm") } // "cm" or "ft"
     var feet by remember { mutableStateOf("") }
     var inches by remember { mutableStateOf("") }
-
+    val scope = rememberCoroutineScope()
     val canContinue = name.isNotBlank() &&
         gender.isNotBlank() &&
         height.isNotBlank() &&
         weight.isNotBlank() &&
+        age.isNotBlank() &&
         workoutsPerWeek.isNotBlank() &&
         workoutDuration.isNotBlank() &&
         targetPhysique.isNotBlank() &&
@@ -84,11 +90,12 @@ fun WelcomeScreen(
         1 -> gender.isNotBlank()
         2 -> if (heightUnit == "cm") height.isNotBlank() else (feet.isNotBlank() && inches.isNotBlank())
         3 -> weight.isNotBlank()
-        4 -> workoutsPerWeek.isNotBlank()
-        5 -> workoutDuration.isNotBlank()
-        6 -> targetPhysique.isNotBlank()
-        7 -> dietaryRestriction.isNotBlank()
-        8 -> preferredCuisine.isNotBlank()
+        4 -> age.isNotBlank()
+        5 -> workoutsPerWeek.isNotBlank()
+        6 -> workoutDuration.isNotBlank()
+        7 -> targetPhysique.isNotBlank()
+        8 -> dietaryRestriction.isNotBlank()
+        9 -> preferredCuisine.isNotBlank()
         else -> false
     }
 
@@ -261,6 +268,15 @@ fun WelcomeScreen(
                                 )
                             }
                             4 -> {
+                                SectionTitle(text = "Prerequisite")
+                                QuestionTitle(text = "How old are you?")
+                                NumericInput(
+                                    label = "Age",
+                                    value = age,
+                                    onValueChange = onAgeChange
+                                )
+                            }
+                            5 -> {
                                 SectionTitle(text = "Context")
                                 QuestionTitle(text = "How often do you work out each week?")
                                 SimpleDropdown(
@@ -270,7 +286,7 @@ fun WelcomeScreen(
                                     onValueChange = onWorkoutsPerWeekChange
                                 )
                             }
-                            5 -> {
+                            6 -> {
                                 SectionTitle(text = "Context")
                                 QuestionTitle(text = "How much time per workout?")
                                 SimpleDropdown(
@@ -280,7 +296,7 @@ fun WelcomeScreen(
                                     onValueChange = onWorkoutDurationChange
                                 )
                             }
-                            6 -> {
+                            7 -> {
                                 SectionTitle(text = "Context")
                                 QuestionTitle(text = "What is your target physique?")
                                 SimpleDropdown(
@@ -290,7 +306,7 @@ fun WelcomeScreen(
                                     onValueChange = onTargetPhysiqueChange
                                 )
                             }
-                            7 -> {
+                            8 -> {
                                 SectionTitle(text = "Nutrition")
                                 QuestionTitle(text = "Any dietary restriction?")
                                 SimpleDropdown(
@@ -334,7 +350,78 @@ fun WelcomeScreen(
                     Button(
                         onClick = {
                             if (isLastStep) {
-                                if (canContinue) onContinue()
+                                if (canContinue) {
+                                    // Map UI values to API values
+                                    val activityLevel = when (workoutsPerWeek) {
+                                        "0" -> "sedentary"
+                                        "1-2" -> "light"
+                                        "3-4" -> "moderate"
+                                        "5-6" -> "active"
+                                        "7+" -> "very_active"
+                                        else -> "moderate"
+                                    }
+                                    val fitnessGoal = when (targetPhysique) {
+                                        "Lose weight" -> "weight_loss"
+                                        "Build muscle" -> "muscle_gain"
+                                        "Be active" -> "maintain"
+                                        else -> "weight_loss"
+                                    }
+                                    val dietTypeApi = when (dietaryRestriction) {
+                                        "Vegan" -> "vegan"
+                                        "Vegetarian" -> "vegetarian"
+                                        "Non-vegetarian" -> "non-vegetarian"
+                                        "Pescatarian" -> "pescatarian"
+                                        else -> "none"
+                                    }
+
+                                    // Create health profile
+                                    val workoutsPerDayNum = when (workoutsPerWeek) {
+                                        "0" -> 0
+                                        "1-2" -> 2
+                                        "3-4" -> 4
+                                        "5-6" -> 6
+                                        "7+" -> 7
+                                        else -> 3
+                                    }
+                                    val workoutDurationMin = when (workoutDuration) {
+                                        "15-30 min" -> 22
+                                        "30-45 min" -> 37
+                                        "45-60 min" -> 52
+                                        "60+ min" -> 75
+                                        else -> 30
+                                    }
+
+                                    viewModel.createHealthProfile(
+                                        weight = weight,
+                                        height = height,
+                                        age = age.toIntOrNull() ?: 25,
+                                        gender = gender,
+                                        activityLevel = activityLevel,
+                                        fitnessGoal = fitnessGoal,
+                                        workoutsPerDay = workoutsPerDayNum,
+                                        workoutsDuration = workoutDurationMin
+                                    )
+
+                                    // Create nutrition profile
+                                    viewModel.createNutritionProfile(
+                                        dietType = dietTypeApi,
+                                        cuisinePreferences = if (preferredCuisine.isNotBlank()) listOf(preferredCuisine) else emptyList()
+                                    )
+
+                                    // Generate AI plan
+                                    viewModel.generatePlan(
+                                        intensity = when (workoutDuration) {
+                                            "15-30 min" -> "light"
+                                            "30-45 min" -> "moderate"
+                                            "45-60 min" -> "high"
+                                            "60+ min" -> "intense"
+                                            else -> "moderate"
+                                        },
+                                        goals = listOf(fitnessGoal)
+                                    )
+
+                                    onContinue()
+                                }
                             } else {
                                 if (canProceedToNext) stepIndex += 1
                             }

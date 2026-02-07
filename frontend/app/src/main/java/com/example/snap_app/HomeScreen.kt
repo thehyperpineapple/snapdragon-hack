@@ -37,6 +37,7 @@ fun HomeScreen(
     onNavigateToChat: () -> Unit = {}
 ) {
     val completionPercentage by viewModel.completionPercentage.collectAsState()
+    val username by viewModel.username.collectAsState()
 
     // Animate progress
     val animatedProgress by animateFloatAsState(
@@ -84,7 +85,7 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "Welcome Back",
+                    text = if (username.isNotBlank()) "Welcome, $username" else "Welcome Back",
                     style = MaterialTheme.typography.headlineLarge,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,

@@ -27,7 +27,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SettingsScreen(
     userName: String = "User",
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onLogout: () -> Unit = {}
 ) {
     var notificationsEnabled by remember { mutableStateOf(true) }
     var mealRemindersEnabled by remember { mutableStateOf(true) }
@@ -175,7 +176,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = { /* TODO: Logout functionality */ },
+                onClick = { onLogout() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)

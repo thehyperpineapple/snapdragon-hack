@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,70 +43,21 @@ data class DietWeek(
 )
 
 @Composable
-fun NutritionScreen() {
-    // Sample JSON data
-    val jsonData = """
-    {
-      "diet": [
-        {
-          "week": "week1",
-          "breakfast": { 
-            "AIdesc": "Oatmeal with berries and almonds", 
-            "actualMeal": "Steel-cut oats, blueberries, sliced almonds, honey", 
-            "calories": "450", 
-            "carbs": "65g", 
-            "fats": "12g", 
-            "protein": "15g" 
-          },
-          "lunch": { 
-            "AIdesc": "Grilled chicken salad with quinoa", 
-            "actualMeal": "Mixed greens, grilled chicken breast, quinoa, cherry tomatoes, olive oil dressing", 
-            "calories": "550", 
-            "carbs": "45g", 
-            "fats": "18g", 
-            "protein": "42g" 
-          },
-          "dinner": { 
-            "AIdesc": "Salmon with roasted vegetables", 
-            "actualMeal": "Baked salmon fillet, roasted broccoli, sweet potato, lemon butter sauce", 
-            "calories": "680", 
-            "carbs": "52g", 
-            "fats": "28g", 
-            "protein": "48g" 
-          }
-        },
-        {
-          "week": "week2",
-          "breakfast": { 
-            "AIdesc": "Greek yogurt parfait", 
-            "actualMeal": "Greek yogurt, granola, mixed berries, honey drizzle", 
-            "calories": "420", 
-            "carbs": "58g", 
-            "fats": "10g", 
-            "protein": "24g" 
-          },
-          "lunch": { 
-            "AIdesc": "Turkey wrap with avocado", 
-            "actualMeal": "Whole wheat wrap, turkey breast, avocado, lettuce, tomato, mustard", 
-            "calories": "520", 
-            "carbs": "48g", 
-            "fats": "20g", 
-            "protein": "35g" 
-          },
-          "dinner": { 
-            "AIdesc": "Lean beef stir-fry", 
-            "actualMeal": "Lean beef strips, mixed vegetables, brown rice, soy sauce", 
-            "calories": "650", 
-            "carbs": "60g", 
-            "fats": "22g", 
-            "protein": "45g" 
-          }
-        }
-      ]
-    }
-    """
+fun NutritionScreen(viewModel: AppViewModel? = null) {
+    val apiWeeks by viewModel?.nutritionPlan?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
+    val planLoading by viewModel?.planLoading?.collectAsState() ?: remember { mutableStateOf(false) }
+    val planError by viewModel?.planError?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
 
-    var dietWeeks by remember { mutableStateOf(parseDiet(jsonData)) }
+    var dietWeeks by remember(apiWeeks) {
+        mutableStateOf(apiWeeks)
+    }
+
+    // Try fetching plan if we have a viewModel and no data yet
+    LaunchedEffect(Unit) {
+        if (viewModel != null && apiWeeks.isEmpty()) {
+            viewModel.fetchPlan()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -130,6 +82,77 @@ fun NutritionScreen() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            when {
+                planLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = NeonPink)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Loading your nutrition plan...",
+                                color = Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+                planError != null && dietWeeks.isEmpty() -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A45))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Could not load nutrition plan",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = planError ?: "Unknown error",
+                                color = Color.White.copy(alpha = 0.6f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel?.fetchPlan() },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonPink)
+                            ) {
+                                Text("Retry", color = Color.White)
+                            }
+                        }
+                    }
+                }
+                dietWeeks.isEmpty() -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A45))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No nutrition plan yet",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Complete your profile setup to get a personalized meal plan.",
+                                color = Color.White.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+                else -> {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
@@ -139,21 +162,36 @@ fun NutritionScreen() {
                         dietWeek = dietWeek,
                         onMealToggle = { mealType ->
                             val updatedWeek = when (mealType) {
-                                "breakfast" -> dietWeek.copy(
-                                    breakfast = dietWeek.breakfast.copy(
-                                        completed = !dietWeek.breakfast.completed
+                                "breakfast" -> {
+                                    if (!dietWeek.breakfast.completed) {
+                                        viewModel?.logMealCompletion("breakfast", dietWeek.breakfast)
+                                    }
+                                    dietWeek.copy(
+                                        breakfast = dietWeek.breakfast.copy(
+                                            completed = !dietWeek.breakfast.completed
+                                        )
                                     )
-                                )
-                                "lunch" -> dietWeek.copy(
-                                    lunch = dietWeek.lunch.copy(
-                                        completed = !dietWeek.lunch.completed
+                                }
+                                "lunch" -> {
+                                    if (!dietWeek.lunch.completed) {
+                                        viewModel?.logMealCompletion("lunch", dietWeek.lunch)
+                                    }
+                                    dietWeek.copy(
+                                        lunch = dietWeek.lunch.copy(
+                                            completed = !dietWeek.lunch.completed
+                                        )
                                     )
-                                )
-                                "dinner" -> dietWeek.copy(
-                                    dinner = dietWeek.dinner.copy(
-                                        completed = !dietWeek.dinner.completed
+                                }
+                                "dinner" -> {
+                                    if (!dietWeek.dinner.completed) {
+                                        viewModel?.logMealCompletion("dinner", dietWeek.dinner)
+                                    }
+                                    dietWeek.copy(
+                                        dinner = dietWeek.dinner.copy(
+                                            completed = !dietWeek.dinner.completed
+                                        )
                                     )
-                                )
+                                }
                                 else -> dietWeek
                             }
 
@@ -164,6 +202,8 @@ fun NutritionScreen() {
                     )
                 }
             }
+                } // end else
+            } // end when
         }
     }
 }
@@ -478,7 +518,7 @@ fun parseDiet(jsonData: String): List<DietWeek> {
                 aiDesc = dinnerMap["AIdesc"] ?: "",
                 actualMeal = dinnerMap["actualMeal"] ?: "",
                 calories = dinnerMap["calories"] ?: "",
-                carbs = dinnerMap["fats"] ?: "",
+                carbs = dinnerMap["carbs"] ?: "",
                 fats = dinnerMap["fats"] ?: "",
                 protein = dinnerMap["protein"] ?: "",
                 completed = false

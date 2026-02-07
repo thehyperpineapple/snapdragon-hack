@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,54 +45,21 @@ data class WorkoutData(
 )
 
 @Composable
-fun GymScreen() {
-    // Sample JSON data
-    val jsonData = """
-    {
-      "workouts": [
-        {
-          "week": "week1",
-          "workout1": {
-            "completed": false,
-            "exercises": {
-              "exercise1": {
-                "name": "Bench Press",
-                "sets": "4",
-                "reps": "8-10"
-              },
-              "exercise2": {
-                "name": "Squats",
-                "sets": "3",
-                "reps": "12"
-              },
-              "exercise3": {
-                "name": "Deadlift",
-                "sets": "3",
-                "reps": "6-8"
-              }
-            }
-          },
-          "workout2": {
-            "completed": false,
-            "exercises": {
-              "exercise1": {
-                "name": "Pull Ups",
-                "sets": "3",
-                "reps": "10"
-              },
-              "exercise2": {
-                "name": "Dumbbell Rows",
-                "sets": "4",
-                "reps": "12"
-              }
-            }
-          }
-        }
-      ]
-    }
-    """
+fun GymScreen(viewModel: AppViewModel? = null) {
+    val apiWorkouts by viewModel?.workoutPlan?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
+    val planLoading by viewModel?.planLoading?.collectAsState() ?: remember { mutableStateOf(false) }
+    val planError by viewModel?.planError?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
 
-    var workouts by remember { mutableStateOf(parseWorkouts(jsonData)) }
+    var workouts by remember(apiWorkouts) {
+        mutableStateOf(apiWorkouts)
+    }
+
+    // Try fetching plan if we have a viewModel and no data yet
+    LaunchedEffect(Unit) {
+        if (viewModel != null && apiWorkouts.isEmpty()) {
+            viewModel.fetchPlan()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -116,6 +84,77 @@ fun GymScreen() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            when {
+                planLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = NeonPink)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Loading your workout plan...",
+                                color = Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+                planError != null && workouts.isEmpty() -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A45))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Could not load workout plan",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = planError ?: "Unknown error",
+                                color = Color.White.copy(alpha = 0.6f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel?.fetchPlan() },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonPink)
+                            ) {
+                                Text("Retry", color = Color.White)
+                            }
+                        }
+                    }
+                }
+                workouts.isEmpty() -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A45))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No workout plan yet",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Complete your profile setup to get a personalized workout plan.",
+                                color = Color.White.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+                else -> {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -156,6 +195,11 @@ fun GymScreen() {
                                 completed = newCompletedStatus
                             )
 
+                            // Log to API when marking as complete
+                            if (newCompletedStatus) {
+                                viewModel?.logWorkoutCompletion(updatedExercises)
+                            }
+
                             workouts = workouts.toMutableList().apply {
                                 this[index] = updatedWorkout
                             }
@@ -163,6 +207,8 @@ fun GymScreen() {
                     )
                 }
             }
+                } // end else
+            } // end when
         }
     }
 }

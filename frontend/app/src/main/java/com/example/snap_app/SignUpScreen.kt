@@ -3,9 +3,11 @@ package com.example.snap_app
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
@@ -31,8 +33,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SignUpScreen(
-    onSignUpSuccess: () -> Unit,
-    onBack: () -> Unit
+    onSignUpSuccess: (userId: String, email: String, username: String) -> Unit,
+    onBack: () -> Unit,
+    onLoginClick: () -> Unit = {}
 ) {
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -107,8 +110,9 @@ fun SignUpScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.Top
         ) {
             // Back button
             IconButton(
@@ -123,7 +127,7 @@ fun SignUpScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -380,14 +384,16 @@ fun SignUpScreen(
                                                 username = username
                                             )
 
-                                            if (response != null) {
-                                                // Store user_id for future use
-                                                // You can use SharedPreferences or DataStore here
+                                            if (response?.user_id != null) {
                                                 isLoading = false
-                                                onSignUpSuccess()
+                                                onSignUpSuccess(
+                                                    response.user_id,
+                                                    response.email ?: email,
+                                                    response.username ?: username
+                                                )
                                             } else {
                                                 isLoading = false
-                                                errorMessage = "Registration failed. Please try again."
+                                                errorMessage = response?.message ?: "Registration failed. Please try again."
                                                 showError = true
                                             }
                                         } catch (e: Exception) {
@@ -435,6 +441,27 @@ fun SignUpScreen(
                             }
                         }
                     }
+                }
+            }
+
+            // Login link
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Already have an account? ",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 14.sp
+                )
+                TextButton(onClick = onLoginClick) {
+                    Text(
+                        text = "Login",
+                        color = NeonPink,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
             }
 
