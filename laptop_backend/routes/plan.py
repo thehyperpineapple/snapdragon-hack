@@ -1,16 +1,18 @@
 """
 AI-Enhanced Plan Management Blueprint
-Uses NPU-accelerated LLM for intelligent plan generation
+Uses Ollama LLM for intelligent plan generation
 """
 
 from flask import Blueprint, jsonify, request
 import logging
 import time
+from dotenv import load_dotenv
+load_dotenv()
 
 from services.plan_service import create_plan, get_plan, update_plan, delete_plan
 from services.health_service import get_health_data
 from services.nutrition_service import get_nutrition_data
-from ai import get_npu_engine
+from ai import get_ollama_engine
 from ai.prompts import plan_prompts
 from ai.utils.model_utils import format_response, merge_user_context, format_error_response
 
@@ -23,15 +25,15 @@ plan_bp = Blueprint('plan', __name__, url_prefix='/users')
 @plan_bp.route('/<user_id>/plan', methods=['POST'])
 def create_user_plan_ai(user_id):
     """
-    Create a new diet/workout plan using NPU-accelerated LLM.
+    Create a new diet/workout plan using Ollama LLM.
 
     Request Body:
         {
             "plan_type": "combined",  // "diet", "workout", or "combined"
-            "duration_weeks": 4,
+            "duration_weeks": 2,      // Keep low (1-2) for faster AI generation
             "intensity": "moderate",
             "specific_goals": ["goal1", "goal2"],
-            "use_ai": true  // Set to false to use mock data
+            "use_ai": true  // Set to false to use mock data (faster)
         }
     """
     data = request.get_json(silent=True) or {}
@@ -41,11 +43,12 @@ def create_user_plan_ai(user_id):
         return jsonify({'error': 'Invalid plan_type'}), 400
 
     use_ai = data.get('use_ai', True)
+    duration_weeks = min(data.get('duration_weeks', 2), 4)  # Cap at 4 weeks for performance
 
     plan_data = {
         'plan_type': plan_type,
         'preferences': {
-            'duration_weeks': data.get('duration_weeks', 4),
+            'duration_weeks': duration_weeks,
             'intensity': data.get('intensity', 'moderate'),
             'specific_goals': data.get('specific_goals', [])
         }
@@ -53,11 +56,11 @@ def create_user_plan_ai(user_id):
 
     if use_ai:
         try:
-            ai_logger.info(f"AI_USAGE: Initiating AI plan generation - userId={user_id}, plan_type={plan_type}")
+            ai_logger.info(f"AI_USAGE: Initiating AI plan generation - userId={user_id}, plan_type={plan_type}, weeks={duration_weeks}")
             start_time = time.time()
 
-            # Get NPU engine instance
-            npu_engine = get_npu_engine()
+            # Get Ollama engine instance
+            ollama_engine = get_ollama_engine()
 
             # Fetch user context
             health_response, health_status = get_health_data(user_id)
@@ -77,10 +80,10 @@ def create_user_plan_ai(user_id):
 
             ai_logger.info(f"AI_INFERENCE: Starting inference for userId={user_id}, plan_type={plan_type}")
 
-            # Generate plan using NPU
-            raw_output = npu_engine.generate(
+            # Generate plan using Ollama
+            raw_output = ollama_engine.generate(
                 prompt=prompt,
-                max_new_tokens=1500,  # Allow longer responses for full plans
+                max_new_tokens=1000,  # Reduced for faster response
                 temperature=0.7,
                 use_cache=True
             )
@@ -89,38 +92,48 @@ def create_user_plan_ai(user_id):
             formatted = format_response(raw_output, expected_format="json")
 
             if not formatted['success']:
-                ai_logger.error(f"AI_INFERENCE: Failed to parse AI response for userId={user_id}: {formatted['error']}")
-                return jsonify({
-                    'error': 'AI generation failed',
-                    'details': formatted['error'],
-                    'raw_output': formatted['raw_output']
-                }), 500
+                ai_logger.warning(f"AI_INFERENCE: Failed to parse AI response for userId={user_id}, falling back to mock data")
+                # Fallback to mock data if AI output is invalid
+                if plan_type in ['diet', 'combined']:
+                    plan_data['diet'] = generate_mock_diet_plan(duration_weeks)
+                if plan_type in ['workout', 'combined']:
+                    plan_data['workouts'] = generate_mock_workout_plan(duration_weeks)
+                plan_data['ai_generated'] = False
+                plan_data['fallback_reason'] = 'AI output parsing failed'
+            else:
+                ai_plan = formatted['data']
+                elapsed_time = time.time() - start_time
 
-            ai_plan = formatted['data']
-            elapsed_time = time.time() - start_time
+                # Extract diet and workout plans
+                if 'diet' in ai_plan:
+                    plan_data['diet'] = ai_plan['diet']
+                if 'workouts' in ai_plan:
+                    plan_data['workouts'] = ai_plan['workouts']
 
-            # Extract diet and workout plans
-            if 'diet' in ai_plan:
-                plan_data['diet'] = ai_plan['diet']
-            if 'workouts' in ai_plan:
-                plan_data['workouts'] = ai_plan['workouts']
+                # Add AI metadata
+                plan_data['ai_generated'] = True
+                plan_data['generation_method'] = 'gemini'
+                plan_data['generation_time'] = f"{elapsed_time:.2f}s"
 
-            # Add AI metadata
-            plan_data['ai_generated'] = True
-            plan_data['generation_method'] = 'npu_llm'
-
-            ai_logger.info(f"AI_INFERENCE: Inference completed successfully for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
+                ai_logger.info(f"AI_INFERENCE: Inference completed successfully for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
 
         except Exception as e:
-            ai_logger.error(f"AI_INFERENCE: AI generation error for userId={user_id}: {e}", exc_info=True)
-            return jsonify(format_error_response(e, "AI plan generation")), 500
+            ai_logger.error(f"AI_INFERENCE: AI generation error for userId={user_id}: {e}, falling back to mock data")
+            # Fallback to mock data on any error (including timeout)
+            if plan_type in ['diet', 'combined']:
+                plan_data['diet'] = generate_mock_diet_plan(duration_weeks)
+            if plan_type in ['workout', 'combined']:
+                plan_data['workouts'] = generate_mock_workout_plan(duration_weeks)
+            plan_data['ai_generated'] = False
+            plan_data['fallback_reason'] = str(e)
     else:
         ai_logger.info(f"AI_NON_USAGE: Mock data used instead of AI for userId={user_id}, plan_type={plan_type}")
         # Fallback to mock data
+        duration_weeks = data.get('duration_weeks', 4)
         if plan_type in ['diet', 'combined']:
-            plan_data['diet'] = generate_mock_diet_plan()
+            plan_data['diet'] = generate_mock_diet_plan(duration_weeks)
         if plan_type in ['workout', 'combined']:
-            plan_data['workouts'] = generate_mock_workout_plan()
+            plan_data['workouts'] = generate_mock_workout_plan(duration_weeks)
         plan_data['ai_generated'] = False
 
     # Save plan to database
@@ -174,8 +187,8 @@ def validate_user_plan(user_id):
         )
 
         # Get AI analysis
-        npu_engine = get_npu_engine()
-        raw_output = npu_engine.generate(
+        ollama_engine = get_ollama_engine()
+        raw_output = ollama_engine.generate(
             prompt=prompt,
             max_new_tokens=800,
             temperature=0.5,  # Lower temp for more consistent analysis
@@ -240,8 +253,8 @@ def adjust_user_plan(user_id):
         )
 
         # Get AI adjustments
-        npu_engine = get_npu_engine()
-        raw_output = npu_engine.generate(
+        ollama_engine = get_ollama_engine()
+        raw_output = ollama_engine.generate(
             prompt=prompt,
             max_new_tokens=1500,
             temperature=0.7,
@@ -308,10 +321,10 @@ def adjust_workout_plan(user_id):
         current_plan = plan_response.get('plan', {})
         workouts = current_plan.get('workouts', [])
 
-        # Find current week
+        # Find current week (support both 'week' and 'weekName' keys)
         current_week = None
         for week in workouts:
-            if week.get('weekName') == week_name:
+            if week.get('week') == week_name or week.get('weekName') == week_name:
                 current_week = week
                 break
 
@@ -341,8 +354,8 @@ def adjust_workout_plan(user_id):
         )
 
         # Get AI adjustments
-        npu_engine = get_npu_engine()
-        raw_output = npu_engine.generate(
+        ollama_engine = get_ollama_engine()
+        raw_output = ollama_engine.generate(
             prompt=prompt,
             max_new_tokens=800,
             temperature=0.7,
@@ -430,10 +443,10 @@ def adjust_nutrition_plan(user_id):
         current_plan = plan_response.get('plan', {})
         diet = current_plan.get('diet', [])
 
-        # Find current week
+        # Find current week (support both 'week' and 'weekName' keys)
         current_week = None
         for week in diet:
-            if week.get('weekName') == week_name:
+            if week.get('week') == week_name or week.get('weekName') == week_name:
                 current_week = week
                 break
 
@@ -469,8 +482,8 @@ def adjust_nutrition_plan(user_id):
         )
 
         # Get AI adjustments
-        npu_engine = get_npu_engine()
-        raw_output = npu_engine.generate(
+        ollama_engine = get_ollama_engine()
+        raw_output = ollama_engine.generate(
             prompt=prompt,
             max_new_tokens=1000,
             temperature=0.7,
@@ -520,30 +533,171 @@ def adjust_nutrition_plan(user_id):
 
 
 # Fallback mock functions (for non-AI mode)
-def generate_mock_diet_plan():
-    """Mock diet plan generator."""
-    return [
+def generate_mock_diet_plan(weeks=4):
+    """Mock diet plan generator matching Nutrition Architect format."""
+    diet_plans = [
         {
-            'weekName': 'Week 1',
-            'meals': {
-                'breakfast': {'name': 'Oatmeal with Berries', 'calories': 350, 'completed': False},
-                'lunch': {'name': 'Grilled Chicken Salad', 'calories': 450, 'completed': False},
-                'dinner': {'name': 'Salmon with Vegetables', 'calories': 500, 'completed': False},
-                'snack': {'name': 'Greek Yogurt', 'calories': 200, 'completed': False}
+            'week': 'Week 1',
+            'breakfast': {
+                'dishName': 'Oatmeal with Fresh Berries and Almonds',
+                'calories': '350',
+                'carbs': '52g',
+                'fats': '10g',
+                'protein': '12g',
+                'completed': False
+            },
+            'lunch': {
+                'dishName': 'Grilled Chicken Caesar Salad',
+                'calories': '450',
+                'carbs': '20g',
+                'fats': '22g',
+                'protein': '42g',
+                'completed': False
+            },
+            'dinner': {
+                'dishName': 'Baked Salmon with Roasted Vegetables',
+                'calories': '520',
+                'carbs': '28g',
+                'fats': '24g',
+                'protein': '45g',
+                'completed': False
+            }
+        },
+        {
+            'week': 'Week 2',
+            'breakfast': {
+                'dishName': 'Greek Yogurt Parfait with Granola and Honey',
+                'calories': '380',
+                'carbs': '48g',
+                'fats': '12g',
+                'protein': '20g',
+                'completed': False
+            },
+            'lunch': {
+                'dishName': 'Quinoa Buddha Bowl with Chickpeas',
+                'calories': '480',
+                'carbs': '58g',
+                'fats': '16g',
+                'protein': '22g',
+                'completed': False
+            },
+            'dinner': {
+                'dishName': 'Turkey Stir-Fry with Brown Rice',
+                'calories': '490',
+                'carbs': '45g',
+                'fats': '14g',
+                'protein': '48g',
+                'completed': False
+            }
+        },
+        {
+            'week': 'Week 3',
+            'breakfast': {
+                'dishName': 'Veggie Omelette with Whole Wheat Toast',
+                'calories': '420',
+                'carbs': '32g',
+                'fats': '22g',
+                'protein': '28g',
+                'completed': False
+            },
+            'lunch': {
+                'dishName': 'Mediterranean Wrap with Hummus',
+                'calories': '440',
+                'carbs': '42g',
+                'fats': '18g',
+                'protein': '24g',
+                'completed': False
+            },
+            'dinner': {
+                'dishName': 'Grilled Chicken with Sweet Potato',
+                'calories': '510',
+                'carbs': '38g',
+                'fats': '12g',
+                'protein': '52g',
+                'completed': False
+            }
+        },
+        {
+            'week': 'Week 4',
+            'breakfast': {
+                'dishName': 'Protein Smoothie Bowl with Banana',
+                'calories': '360',
+                'carbs': '45g',
+                'fats': '8g',
+                'protein': '25g',
+                'completed': False
+            },
+            'lunch': {
+                'dishName': 'Tuna Poke Bowl with Edamame',
+                'calories': '470',
+                'carbs': '40g',
+                'fats': '16g',
+                'protein': '38g',
+                'completed': False
+            },
+            'dinner': {
+                'dishName': 'Beef and Vegetable Stew with Quinoa',
+                'calories': '530',
+                'carbs': '42g',
+                'fats': '18g',
+                'protein': '46g',
+                'completed': False
             }
         }
     ]
+    return diet_plans[:weeks]
 
 
-def generate_mock_workout_plan():
-    """Mock workout plan generator."""
-    return [
+def generate_mock_workout_plan(weeks=4):
+    """Mock workout plan generator matching frontend format."""
+    workout_plans = [
         {
-            'weekName': 'Week 1',
+            'week': 'Week 1',
+            'workoutName': 'Full Body Foundation',
+            'completed': False,
             'exercises': [
-                {'workoutId': 'w1', 'name': 'Push-ups', 'sets': 3, 'reps': 12, 'completed': False},
-                {'workoutId': 'w2', 'name': 'Squats', 'sets': 4, 'reps': 12, 'completed': False},
-                {'workoutId': 'w3', 'name': 'Planks', 'sets': 3, 'duration': '45s', 'completed': False}
+                {'name': 'Push-ups', 'sets': '3', 'reps': '12', 'completed': False},
+                {'name': 'Bodyweight Squats', 'sets': '3', 'reps': '15', 'completed': False},
+                {'name': 'Plank Hold', 'sets': '3', 'reps': '30 sec', 'completed': False},
+                {'name': 'Lunges', 'sets': '3', 'reps': '10 each', 'completed': False},
+                {'name': 'Mountain Climbers', 'sets': '3', 'reps': '20', 'completed': False}
+            ]
+        },
+        {
+            'week': 'Week 2',
+            'workoutName': 'Upper Body Strength',
+            'completed': False,
+            'exercises': [
+                {'name': 'Diamond Push-ups', 'sets': '3', 'reps': '10', 'completed': False},
+                {'name': 'Pike Push-ups', 'sets': '3', 'reps': '8', 'completed': False},
+                {'name': 'Tricep Dips', 'sets': '3', 'reps': '12', 'completed': False},
+                {'name': 'Superman Hold', 'sets': '3', 'reps': '20 sec', 'completed': False},
+                {'name': 'Arm Circles', 'sets': '3', 'reps': '30 sec', 'completed': False}
+            ]
+        },
+        {
+            'week': 'Week 3',
+            'workoutName': 'Lower Body Power',
+            'completed': False,
+            'exercises': [
+                {'name': 'Jump Squats', 'sets': '4', 'reps': '12', 'completed': False},
+                {'name': 'Walking Lunges', 'sets': '3', 'reps': '20', 'completed': False},
+                {'name': 'Glute Bridges', 'sets': '3', 'reps': '15', 'completed': False},
+                {'name': 'Calf Raises', 'sets': '3', 'reps': '20', 'completed': False},
+                {'name': 'Wall Sit', 'sets': '3', 'reps': '45 sec', 'completed': False}
+            ]
+        },
+        {
+            'week': 'Week 4',
+            'workoutName': 'Core & Cardio Blast',
+            'completed': False,
+            'exercises': [
+                {'name': 'Burpees', 'sets': '3', 'reps': '10', 'completed': False},
+                {'name': 'Bicycle Crunches', 'sets': '3', 'reps': '20', 'completed': False},
+                {'name': 'High Knees', 'sets': '3', 'reps': '30 sec', 'completed': False},
+                {'name': 'Russian Twists', 'sets': '3', 'reps': '20', 'completed': False},
+                {'name': 'Plank to Push-up', 'sets': '3', 'reps': '10', 'completed': False}
             ]
         }
     ]
+    return workout_plans[:weeks]

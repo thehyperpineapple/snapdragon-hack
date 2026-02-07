@@ -1,0 +1,205 @@
+{
+  "info": {
+    "name": "AI Endpoints - Nutrition & Workout API",
+    "description": "Tests for AI-enhanced health, nutrition, and plan endpoints. Set `base_url` (e.g. http://localhost:5000) and `user_id` in collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000" },
+    { "key": "user_id", "value": "YOUR_USER_ID" }
+  ],
+  "item": [
+    {
+      "name": "Health AI",
+      "item": [
+        {
+          "name": "Update health profile with AI insights",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight\": 75.5,\n  \"height\": 180,\n  \"age\": 28,\n  \"gender\": \"male\",\n  \"activity_level\": \"moderate\",\n  \"fitness_goal\": \"weight_loss\",\n  \"generate_insights\": true\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/health"
+          }
+        },
+        {
+          "name": "Analyze health metrics (AI)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/users/{{user_id}}/health/analyze"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Nutrition AI",
+      "item": [
+        {
+          "name": "Update nutrition profile with AI recommendations",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calorie_goal\": 2000,\n  \"diet_type\": \"vegetarian\",\n  \"meals_per_day\": 4,\n  \"generate_recommendations\": true\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/nutrition"
+          }
+        },
+        {
+          "name": "Analyze nutrition profile (AI)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/users/{{user_id}}/nutrition/analyze"
+          }
+        },
+        {
+          "name": "Get meal suggestions (AI)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meal_type\": \"dinner\",\n  \"remaining_macros\": {\n    \"calories\": 600,\n    \"protein\": 40,\n    \"carbs\": 60,\n    \"fats\": 20\n  }\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/nutrition/meal-suggestions"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Plan AI",
+      "item": [
+        {
+          "name": "Create plan (AI)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan_type\": \"combined\",\n  \"duration_weeks\": 2,\n  \"intensity\": \"moderate\",\n  \"specific_goals\": [\"weight_loss\", \"muscle_tone\"],\n  \"use_ai\": true\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/plan"
+          }
+        },
+        {
+          "name": "Create plan (mock, no AI)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan_type\": \"combined\",\n  \"duration_weeks\": 2,\n  \"intensity\": \"moderate\",\n  \"specific_goals\": [],\n  \"use_ai\": false\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/plan"
+          }
+        },
+        {
+          "name": "Get plan",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/users/{{user_id}}/plan"
+          }
+        },
+        {
+          "name": "Validate plan (AI)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/plan/validate"
+          }
+        },
+        {
+          "name": "Adjust plan (AI)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adjustment_request\": \"Make workouts less intense\",\n  \"user_feedback\": \"The current plan is too hard\"\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/plan/adjust"
+          }
+        },
+        {
+          "name": "Adjust workout plan (AI)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"week_name\": \"Week 1\",\n  \"skipped_workouts\": [\"w1\", \"w2\"],\n  \"reason\": \"Too intense\"\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/plan/workout/adjust"
+          }
+        },
+        {
+          "name": "Adjust nutrition plan (AI)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"week_name\": \"Week 1\",\n  \"extra_calories\": 500,\n  \"day_of_week\": 2,\n  \"notes\": \"Had extra snacks\"\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/plan/nutrition/adjust"
+          }
+        },
+        {
+          "name": "Delete plan",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/users/{{user_id}}/plan"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Prerequisites (create user & profiles)",
+      "item": [
+        {
+          "name": "Register user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test-ai@example.com\",\n  \"username\": \"test-ai-user\",\n  \"password\": \"testpass123\"\n}"
+            },
+            "url": "{{base_url}}/register"
+          }
+        },
+        {
+          "name": "Create health profile (required for AI)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight\": 75,\n  \"height\": 180,\n  \"age\": 28,\n  \"gender\": \"male\",\n  \"activity_level\": \"moderate\",\n  \"fitness_goal\": \"weight_loss\"\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/health"
+          }
+        },
+        {
+          "name": "Create nutrition profile (required for AI)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"allergies\": [],\n  \"diet_type\": \"vegetarian\",\n  \"calorie_goal\": 2000,\n  \"meals_per_day\": 4\n}"
+            },
+            "url": "{{base_url}}/users/{{user_id}}/nutrition"
+          }
+        }
+      ]
+    }
+  ]
+}
