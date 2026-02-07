@@ -29,7 +29,9 @@ def create_health_profile(user_id):
             "age": 28,
             "gender": "male",
             "activity_level": "moderate",
-            "fitness_goal": "weight_loss"
+            "fitness_goal": "weight_loss",
+            "workouts_per_day": 3,
+            "workouts_duration": 30,
         }
     """
     data = request.get_json(silent=True) or {}
@@ -92,26 +94,75 @@ def remove_health_profile(user_id):
 
 @user_bp.route('/<user_id>/nutrition', methods=['POST'])
 def create_nutrition_profile(user_id):
+    #TODO: FIX TO CALCULATE MACROS AND TDEE ON BACKEND
     """
     Create nutrition profile.
     
     Request Body:
         {
-            "allergies": ["peanuts"],
             "diet_type": "vegetarian",
-            "calorie_goal": 2000,
             "meals_per_day": 4
         }
     """
     data = request.get_json(silent=True) or {}
+
+    dbData, status = get_health_data(user_id)
     
+    if status != 200:
+        return jsonify({'error': 'Failed to get health data'}), 500
+    
+    health_data = dbData.get('profile', {})
+    
+    age = health_data.get('age', 0)
+    gender = health_data.get('gender', 'male')
+    weight = health_data.get('weight', 0)
+    height = health_data.get('height', 0)
+
+    workouts_per_day = health_data.get('workouts_per_day', 0)
+    workouts_duration = health_data.get('workouts_duration', 0)
+
+    total_workouts_duration = workouts_per_day * workouts_duration
+    if total_workouts_duration < 0:
+        activity_multiplier = 1.2
+    elif total_workouts_duration < 150:
+        activity_multiplier = 1.375
+    elif total_workouts_duration < 300:
+        activity_multiplier = 1.55
+    elif total_workouts_duration < 450:
+        activity_multiplier = 1.725
+    else:
+        activity_multiplier = 1.9
+
+    
+    if gender == 'male':
+        bmr = 10 * weight + 6.25 * height - 5 * age + 5
+    else:
+        bmr = 10 * weight + 6.25 * height - 5 * age - 161
+
+    tdee = bmr * activity_multiplier
+    
+    protein_goal = round(weight * 1.5, 0)
+    fat_goal = tdee * 0.30
+    carb_goal = tdee - protein_goal - fat_goal
+
+    age = health_data.get('age', 0)
+
+    if 'weight_loss' == health_data.get('fitness_goal', 'weight_loss') :
+        calorie_goal = tdee - 500
+    elif 'weight_gain' in health_data.get('fitness_goal', 'weight_loss')  :
+        calorie_goal = tdee + 500
+    else:
+        calorie_goal = tdee
+
+
+
     nutrition_data = {
         'allergies': data.get('allergies', []),
         'diet_type': data.get('diet_type', 'standard'),
-        'calorie_goal': data.get('calorie_goal', 2000),
-        'protein_goal': data.get('protein_goal'),
-        'carb_goal': data.get('carb_goal'),
-        'fat_goal': data.get('fat_goal'),
+        'calorie_goal': calorie_goal,
+        'protein_goal': protein_goal,
+        'carb_goal': carb_goal,
+        'fat_goal': fat_goal,
         'meals_per_day': data.get('meals_per_day', 3),
         'dietary_restrictions': data.get('dietary_restrictions', []),
         'cuisine_preferences': data.get('cuisine_preferences', [])

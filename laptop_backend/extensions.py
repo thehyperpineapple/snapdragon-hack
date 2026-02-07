@@ -1,112 +1,59 @@
 """
-Firebase and logging extensions initialization.
+Flask extensions - Firebase/Firestore initialization.
+
+This module initializes the Firebase Admin SDK and exposes the Firestore
+database client as `db` for use across the application.
 """
 
+import glob
+import json
 import os
-import logging
-import logging.handlers
-from datetime import datetime
-from pathlib import Path
 
-# Create logs directory
-LOGS_DIR = Path("logs")
-LOGS_DIR.mkdir(exist_ok=True)
+import firebase_admin
+from firebase_admin import firestore
 
-# Configure logging
-def setup_logging():
-    """
-    Configure comprehensive logging with console and file handlers.
-    Logs include timestamps, level, module name, and detailed messages.
-    """
-    # Create logger
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-
-    # Remove existing handlers
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
-
-    # Log format with detailed information
-    log_format = logging.Formatter(
-        '[%(asctime)s] %(levelname)-8s [%(name)s:%(funcName)s:%(lineno)d] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-
-    # Console handler (INFO level)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(log_format)
-    logger.addHandler(console_handler)
-
-    # File handler for all logs (DEBUG level)
-    file_handler = logging.handlers.RotatingFileHandler(
-        LOGS_DIR / 'backend.log',
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(log_format)
-    logger.addHandler(file_handler)
-
-    # Separate AI inference log file
-    ai_handler = logging.handlers.RotatingFileHandler(
-        LOGS_DIR / 'ai_inference.log',
-        maxBytes=10*1024*1024,
-        backupCount=5
-    )
-    ai_handler.setLevel(logging.DEBUG)
-    ai_handler.setFormatter(log_format)
-
-    # Separate database operations log file
-    db_handler = logging.handlers.RotatingFileHandler(
-        LOGS_DIR / 'database.log',
-        maxBytes=10*1024*1024,
-        backupCount=5
-    )
-    db_handler.setLevel(logging.DEBUG)
-    db_handler.setFormatter(log_format)
-
-    return logger, ai_handler, db_handler
+# Firestore client - initialized on module load
+db = None
 
 
-# Initialize logging
-logger, ai_handler, db_handler = setup_logging()
+def _get_credentials():
+    """Get Firebase credentials from env or default file."""
+    # Option 1: Service account JSON file path
+    cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if cred_path and os.path.exists(cred_path):
+        return firebase_admin.credentials.Certificate(cred_path)
 
-# Add AI-specific logger
-ai_logger = logging.getLogger('ai')
-ai_logger.addHandler(ai_handler)
+    # Option 2: Service account JSON as string in env
+    if os.getenv("FIREBASE_SERVICE_ACCOUNT"):
+        try:
+            service_account = json.loads(os.getenv("FIREBASE_SERVICE_ACCOUNT"))
+            return firebase_admin.credentials.Certificate(service_account)
+        except (json.JSONDecodeError, TypeError):
+            pass
 
-# Add database-specific logger
-db_logger = logging.getLogger('database')
-db_logger.addHandler(db_handler)
+    # Option 3: Default - look for firestore_key.json or *-firebase-adminsdk-*.json in laptop_backend dir
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    for filename in ("firestore_key.json",):
+        default_path = os.path.join(backend_dir, filename)
+        if os.path.exists(default_path):
+            return firebase_admin.credentials.Certificate(default_path)
 
-logger.info("="*80)
-logger.info("Backend Application Started")
-logger.info(f"Logging initialized: {datetime.now().isoformat()}")
-logger.info("="*80)
+    for path in glob.glob(os.path.join(backend_dir, "*-firebase-adminsdk-*.json")):
+        return firebase_admin.credentials.Certificate(path)
 
-# Firebase initialization
+    return None
+
+
+# Initialize Firebase and set db on module load
 try:
-    import firebase_admin
-    from firebase_admin import credentials, firestore
+    firebase_admin.get_app()
+except ValueError:
+    cred = _get_credentials()
+    if cred is None:
+        raise RuntimeError(
+            "Firebase credentials not found. Set GOOGLE_APPLICATION_CREDENTIALS, "
+            "FIREBASE_SERVICE_ACCOUNT, or place firestore_key.json in laptop_backend."
+        )
+    firebase_admin.initialize_app(cred)
 
-    # Initialize Firebase
-    if not firebase_admin.get_app():
-        creds_path = os.getenv('FIREBASE_CREDENTIALS_PATH', './serviceAccountKey.json')
-        if os.path.exists(creds_path):
-            cred = credentials.Certificate(creds_path)
-            firebase_admin.initialize_app(cred)
-            logger.info(f"Firebase initialized with credentials from: {creds_path}")
-        else:
-            firebase_admin.initialize_app()
-            logger.info("Firebase initialized with default credentials")
-
-    db = firestore.client()
-    logger.info("Firestore client initialized successfully")
-
-except ImportError:
-    logger.warning("Firebase admin SDK not installed")
-    db = None
-except Exception as e:
-    logger.error(f"Failed to initialize Firebase: {e}", exc_info=True)
-    db = None
+db = firestore.client()

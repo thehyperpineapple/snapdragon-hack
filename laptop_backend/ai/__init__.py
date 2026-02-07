@@ -1,17 +1,19 @@
 """
-AI Layer for Snapdragon NPU Integration
-Handles LLM inference on Qualcomm Hexagon HTP
+AI Layer for LLM Inference
+Uses Ollama for local model serving
 """
 
-from .inference.npu_engine import NPUInferenceEngine, get_npu_engine
+from .inference.ollama_engine import OllamaEngine, get_ollama_engine, get_npu_engine
 from .prompts import plan_prompts, nutrition_prompts, health_prompts
 
+
 __all__ = [
-    'NPUInferenceEngine',
-    'get_npu_engine',
+    'OllamaEngine',
+    'get_ollama_engine',
+    'get_npu_engine',  # Backward compatibility alias
     'plan_prompts',
     'nutrition_prompts',
     'health_prompts'
 ]
 
-__version__ = '1.0.0'
+__version__ = '2.0.0'

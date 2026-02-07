@@ -77,3 +77,36 @@ def delete_user(user_id):
     except Exception as e:
         logger.error(f"DB_WRITE: Failed to delete user - userId={user_id}, error={str(e)}", exc_info=True)
         return {"error": str(e)}, 500
+
+def login_user_entry(email, password):
+    """Login user with email and password."""
+    logger.info(f"DB_READ: Attempting to login user with email={email}")
+    try:
+        users_ref = db.collection("users")
+        
+        # Find user by email
+        docs = users_ref.where("email", "==", email).limit(1).get()
+        docs_list = list(docs)
+        
+        if len(docs_list) == 0:
+            logger.warning(f"DB_READ: User not found for login - email={email}")
+            return {"error": "Invalid email or password"}, 401
+        
+        doc = docs_list[0]
+        user_data = doc.to_dict()
+        
+        if user_data.get('password') != password:
+            logger.warning(f"DB_READ: Incorrect password for email={email}")
+            return {"error": "Invalid email or password"}, 401
+        
+        logger.info(f"DB_READ: User logged in successfully - userId={doc.id}, email={email}")
+        return {
+            "message": "User logged in successfully",
+            "userId": doc.id,
+            "username": user_data.get('username'),
+            "email": email
+        }, 200
+        
+    except Exception as e:
+        logger.error(f"DB_READ: Failed to login user - email={email}, error={str(e)}", exc_info=True)
+        return {"error": str(e)}, 500

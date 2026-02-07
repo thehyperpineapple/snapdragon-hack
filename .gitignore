@@ -9,6 +9,27 @@ local.properties
 # macOS
 .DS_Store
 
-firestore_key.json
+# Python
 **/__pycache__/
+myenv/
+venv/
+*.pyc
+
+# Environment and secrets
 .env
+firestore_key.json
+*firebase-adminsdk*.json
+
+# Qualcomm/Snapdragon DLLs (large binaries)
+*.dll
+
+# Models (large files)
+models/
+models-*/
+
+# Logs
+*.log
+error_log.txt
+
+# Test files
+test_engine.py

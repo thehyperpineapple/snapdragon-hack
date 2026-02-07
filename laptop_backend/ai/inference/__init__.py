@@ -1,8 +1,7 @@
 """
-Inference submodule - NPU engine and cache management
+Inference submodule - Ollama engine for LLM inference
 """
 
-from .npu_engine import NPUInferenceEngine, get_npu_engine
-from .cache_manager import KVCacheManager
+from .ollama_engine import OllamaEngine, get_ollama_engine, get_npu_engine
 
-__all__ = ['NPUInferenceEngine', 'get_npu_engine', 'KVCacheManager']
+__all__ = ['OllamaEngine', 'get_ollama_engine', 'get_npu_engine']

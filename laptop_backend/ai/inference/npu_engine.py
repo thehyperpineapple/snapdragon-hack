@@ -424,14 +424,3 @@ class NPUInferenceEngine:
     def __repr__(self) -> str:
         mode = "production" if self.session else "simulation"
         return f"NPUInferenceEngine(mode={mode}, initialized={self._initialized})"
-
-
-# Singleton instance getter
-def get_npu_engine() -> NPUInferenceEngine:
-    """
-    Get the singleton NPU inference engine instance.
-
-    Returns:
-        Initialized NPUInferenceEngine instance
-    """
-    return NPUInferenceEngine()
