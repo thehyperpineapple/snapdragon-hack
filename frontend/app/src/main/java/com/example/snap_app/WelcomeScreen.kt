@@ -3,17 +3,14 @@ package com.example.snap_app
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.Button
@@ -27,6 +24,8 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -38,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -64,6 +64,9 @@ fun WelcomeScreen(
 ) {
     var stepIndex by remember { mutableStateOf(0) }
     val totalSteps = 9
+    var heightUnit by remember { mutableStateOf("cm") } // "cm" or "ft"
+    var feet by remember { mutableStateOf("") }
+    var inches by remember { mutableStateOf("") }
 
     val canContinue = name.isNotBlank() &&
         gender.isNotBlank() &&
@@ -79,7 +82,7 @@ fun WelcomeScreen(
     val canProceedToNext = when (stepIndex) {
         0 -> name.isNotBlank()
         1 -> gender.isNotBlank()
-        2 -> height.isNotBlank()
+        2 -> if (heightUnit == "cm") height.isNotBlank() else (feet.isNotBlank() && inches.isNotBlank())
         3 -> weight.isNotBlank()
         4 -> workoutsPerWeek.isNotBlank()
         5 -> workoutDuration.isNotBlank()
@@ -128,29 +131,13 @@ fun WelcomeScreen(
                     transitionSpec = {
                         val direction = if (targetState > initialState) 1 else -1
                         val enter = slideInHorizontally(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            ),
+                            animationSpec = tween(300, easing = FastOutSlowInEasing),
                             initialOffsetX = { it * direction }
-                        ) + fadeIn(
-                            animationSpec = tween(400, easing = FastOutSlowInEasing)
-                        ) + scaleIn(
-                            initialScale = 0.92f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            )
-                        )
+                        ) + fadeIn(animationSpec = tween(300))
                         val exit = slideOutHorizontally(
                             animationSpec = tween(300, easing = FastOutSlowInEasing),
-                            targetOffsetX = { -it * direction / 2 }
-                        ) + fadeOut(
-                            animationSpec = tween(250)
-                        ) + scaleOut(
-                            targetScale = 0.96f,
-                            animationSpec = tween(300)
-                        )
+                            targetOffsetX = { -it * direction }
+                        ) + fadeOut(animationSpec = tween(300))
                         ContentTransform(enter, exit)
                     },
                     label = "question-transition"
@@ -179,16 +166,95 @@ fun WelcomeScreen(
                             2 -> {
                                 SectionTitle(text = "Prerequisite")
                                 QuestionTitle(text = "What is your height?")
-                                OutlinedInput(
-                                    label = "Height (cm)",
-                                    value = height,
-                                    onValueChange = onHeightChange
-                                )
+                                
+                                // Unit toggle
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        RadioButton(
+                                            selected = heightUnit == "cm",
+                                            onClick = { heightUnit = "cm" },
+                                            colors = RadioButtonDefaults.colors(
+                                                selectedColor = NeonPink,
+                                                unselectedColor = Purple
+                                            )
+                                        )
+                                        Text(
+                                            text = "Centimeters",
+                                            color = Color.White,
+                                            modifier = Modifier.padding(start = 4.dp)
+                                        )
+                                    }
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        RadioButton(
+                                            selected = heightUnit == "ft",
+                                            onClick = { heightUnit = "ft" },
+                                            colors = RadioButtonDefaults.colors(
+                                                selectedColor = NeonPink,
+                                                unselectedColor = Purple
+                                            )
+                                        )
+                                        Text(
+                                            text = "Feet/Inches",
+                                            color = Color.White,
+                                            modifier = Modifier.padding(start = 4.dp)
+                                        )
+                                    }
+                                }
+                                
+                                if (heightUnit == "cm") {
+                                    NumericInput(
+                                        label = "Height (cm)",
+                                        value = height,
+                                        onValueChange = onHeightChange
+                                    )
+                                } else {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        NumericInput(
+                                            label = "Feet",
+                                            value = feet,
+                                            onValueChange = { 
+                                                feet = it
+                                                // Convert to cm and update height
+                                                if (feet.isNotBlank() && inches.isNotBlank()) {
+                                                    val totalCm = (feet.toIntOrNull() ?: 0) * 30.48 + (inches.toIntOrNull() ?: 0) * 2.54
+                                                    onHeightChange(totalCm.toInt().toString())
+                                                }
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        NumericInput(
+                                            label = "Inches",
+                                            value = inches,
+                                            onValueChange = { 
+                                                inches = it
+                                                // Convert to cm and update height
+                                                if (feet.isNotBlank() && inches.isNotBlank()) {
+                                                    val totalCm = (feet.toIntOrNull() ?: 0) * 30.48 + (inches.toIntOrNull() ?: 0) * 2.54
+                                                    onHeightChange(totalCm.toInt().toString())
+                                                }
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
                             }
                             3 -> {
                                 SectionTitle(text = "Prerequisite")
                                 QuestionTitle(text = "What is your weight?")
-                                OutlinedInput(
+                                NumericInput(
                                     label = "Weight (kg)",
                                     value = weight,
                                     onValueChange = onWeightChange
@@ -323,6 +389,34 @@ private fun OutlinedInput(
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
         label = { Text(label, color = Purple.copy(alpha = 0.7f)) },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = NeonPink,
+            unfocusedBorderColor = Purple,
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            cursorColor = NeonPink
+        )
+    )
+}
+
+@Composable
+private fun NumericInput(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { newValue ->
+            // Only allow digits
+            if (newValue.isEmpty() || newValue.all { it.isDigit() }) {
+                onValueChange(newValue)
+            }
+        },
+        modifier = modifier.fillMaxWidth(),
+        label = { Text(label, color = Purple.copy(alpha = 0.7f)) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = NeonPink,
             unfocusedBorderColor = Purple,
