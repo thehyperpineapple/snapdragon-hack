@@ -4,9 +4,6 @@
 
 <h1 align="center">FuelForm</h1>
 
-
-# FuelForm
-
 FuelForm is an adaptive fitness and nutrition planning system that automates workout and dietary decisions using AI and machine learning. The goal of the application is to reduce the cognitive burden of planning workouts and meals by continuously adapting recommendations based on user behavior, recovery, and progress.
 
 FuelForm models fitness as a dynamic system where a user’s physical state evolves over time. The application uses three AI/ML models working together across devices to deliver personalized, low-effort fitness optimization.
