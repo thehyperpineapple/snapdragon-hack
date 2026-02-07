@@ -8,3 +8,7 @@ local.properties
 
 # macOS
 .DS_Store
+
+firestore_key.json
+**/__pycache__/
+.env
