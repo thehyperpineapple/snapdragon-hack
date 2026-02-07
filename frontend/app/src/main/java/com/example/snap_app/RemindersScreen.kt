@@ -80,7 +80,7 @@ fun RemindersScreen(viewModel: AppViewModel) {
                     .padding(vertical = 8.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = Color(0xFF1A2A45) // Matching NutritionScreen
                 )
             ) {
                 Column(
@@ -113,14 +113,14 @@ fun RemindersScreen(viewModel: AppViewModel) {
                             CircularProgressIndicator(
                                 progress = completionPercentage / 100f,
                                 modifier = Modifier.size(60.dp),
-                                color = Yellow,
+                                color = NeonPink,
                                 strokeWidth = 6.dp,
-                                trackColor = Purple.copy(alpha = 0.3f)
+                                trackColor = Color(0xFF1E3050).copy(alpha = 0.5f)
                             )
                             Text(
                                 text = "$completionPercentage%",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Yellow,
+                                color = NeonPink,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -185,7 +185,7 @@ fun RemindersScreen(viewModel: AppViewModel) {
                     .padding(16.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = DarkBlue
+                    containerColor = Color(0xFF1A2A45)
                 ),
                 elevation = CardDefaults.cardElevation(8.dp)
             ) {
@@ -211,7 +211,7 @@ fun RemindersScreen(viewModel: AppViewModel) {
                             Icon(
                                 Icons.Default.Close,
                                 contentDescription = "Close",
-                                tint = Purple
+                                tint = NeonPink
                             )
                         }
                     }
@@ -226,15 +226,15 @@ fun RemindersScreen(viewModel: AppViewModel) {
                                     "Enter your workout..."
                                 else
                                     "Enter what you ate...",
-                                color = Purple.copy(alpha = 0.6f)
+                                color = Color.White.copy(alpha = 0.5f)
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Yellow,
-                            unfocusedBorderColor = Purple,
+                            focusedBorderColor = NeonPink,
+                            unfocusedBorderColor = Color(0xFF1E3050),
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            cursorColor = Yellow
+                            cursorColor = NeonPink
                         ),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -251,13 +251,13 @@ fun RemindersScreen(viewModel: AppViewModel) {
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Yellow
+                            containerColor = NeonPink
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
                             text = "Submit",
-                            color = Color.Black,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(8.dp)
                         )
@@ -287,7 +287,7 @@ fun CompletedSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    color = Color(0xFF2D1B3D),
+                    color = Color(0xFF1E3050), // Matching NutritionScreen meal card color
                     shape = RoundedCornerShape(12.dp)
                 )
                 .then(
@@ -305,7 +305,7 @@ fun CompletedSection(
                 Text(
                     text = "Completed",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Yellow,
+                    color = NeonPink,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -320,7 +320,7 @@ fun CompletedSection(
                 Icon(
                     imageVector = if (showCompletedSection) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (showCompletedSection) "Collapse" else "Expand",
-                    tint = Yellow
+                    tint = NeonPink
                 )
             }
         }
@@ -348,7 +348,7 @@ fun CompletedItem(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                color = Color(0xFF1F1F1F),
+                color = Color(0xFF142038), // Slightly darker blue
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(16.dp),
@@ -371,7 +371,7 @@ fun CompletedItem(
         TextButton(onClick = onUncomplete) {
             Text(
                 text = "Undo",
-                color = Yellow,
+                color = NeonPink,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -385,19 +385,19 @@ fun ReminderItem(
     onYes: () -> Unit,
     onNo: () -> Unit
 ) {
-    // Different purple shades for variety
-    val purpleShades = listOf(
-        Color(0xFF2D1B3D),
-        Color(0xFF3D2554),
-        Color(0xFF4A2E6B),
-        Color(0xFF372049)
+    // Different blue shades for variety - matching NutritionScreen theme
+    val blueShades = listOf(
+        Color(0xFF1E3050),
+        Color(0xFF1A2A45),
+        Color(0xFF253548),
+        Color(0xFF1F3555)
     )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                color = purpleShades[index % purpleShades.size],
+                color = blueShades[index % blueShades.size],
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(12.dp),
@@ -424,11 +424,11 @@ fun ReminderItem(
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // Yes button (darker pink)
+            // Yes button
             Button(
                 onClick = onYes,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = DarkPink
+                    containerColor = Color(0xFF4CAF50)
                 ),
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
@@ -445,7 +445,7 @@ fun ReminderItem(
             Button(
                 onClick = onNo,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Purple
+                    containerColor = NeonPink
                 ),
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)

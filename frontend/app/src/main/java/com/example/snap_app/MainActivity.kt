@@ -231,6 +231,21 @@ fun TopAppBarWithMenu(navController: NavHostController, currentRoute: String?) {
         actions = {
             IconButton(
                 onClick = {
+                    if (currentRoute != Screen.DonutShops.route) {
+                        navController.navigate(Screen.DonutShops.route)
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PinDrop,
+                    contentDescription = "Donut Shops",
+                    tint = NeonPink,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+
+            IconButton(
+                onClick = {
                     if (currentRoute == Screen.Settings.route) {
                         navController.popBackStack()
                     } else {

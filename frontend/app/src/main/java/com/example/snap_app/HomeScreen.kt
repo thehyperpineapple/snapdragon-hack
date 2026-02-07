@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
 
 @Composable
 fun HomeScreen(
@@ -72,12 +75,15 @@ fun HomeScreen(
                 )
             )
     ) {
+        val scrollState = rememberScrollState()
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
+        ){
             // Header Section
             Column(
                 modifier = Modifier.fillMaxWidth(),
