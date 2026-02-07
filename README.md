@@ -25,6 +25,23 @@ Together, these models continuously adjust recommendations based on user activit
 
 **Note on Testing and Documentation:** We have dedicated unit tests for our frontend and thorough documentation throughout the repository. 
 
+<img width="200" height="400" alt="Screenshot 2026-02-07 at 12 59 17 PM" src="https://github.com/user-attachments/assets/2b7e566a-5042-4929-bd27-1905153083b3" />
+
+<img width="200" height="400" alt="Screenshot 2026-02-07 at 12 59 26 PM" src="https://github.com/user-attachments/assets/dc033585-ea98-4e81-8c75-eee151478886" />
+
+<img width="200" height="400" alt="Screenshot 2026-02-07 at 1 02 58 PM" src="https://github.com/user-attachments/assets/026a6c7e-ebaf-45db-b9aa-9e689fdf7bab" />
+
+<img width="200" height="400" alt="Screenshot 2026-02-07 at 1 02 40 PM" src="https://github.com/user-attachments/assets/a7037940-8a3b-41f5-909d-eab7d4e27a75" />
+
+<img width="200" height="400" alt="Screenshot 2026-02-07 at 1 04 17 PM" src="https://github.com/user-attachments/assets/57ca2362-eb40-4ddc-8d99-438cf49c0d05" />
+
+<img width="200" height="400" alt="Screenshot 2026-02-07 at 1 07 42 PM" src="https://github.com/user-attachments/assets/e2c8b2ba-8a22-4590-b46d-2f9e0d68c693" />
+
+<img width="200" height="400" alt="Screenshot 2026-02-07 at 1 17 06 PM" src="https://github.com/user-attachments/assets/89ebea3b-a47f-4bd7-b8d1-5ebdc28a9c27" />
+
+
+
+
 ## Feature Information
 - **Sign up/ Login** Features for data security
 - Preferences, health data, goals **initial self reporting** to use for fitness app
