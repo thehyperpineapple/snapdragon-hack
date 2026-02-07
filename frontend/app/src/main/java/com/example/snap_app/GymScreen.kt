@@ -44,15 +44,104 @@ data class WorkoutData(
     val exercises: List<Exercise>
 )
 
+// Hardcoded sample workouts for offline/demo mode
+object SampleWorkouts {
+    val sampleWorkoutPlan = listOf(
+        WorkoutData(
+            week = "week1",
+            workoutName = "workout1",
+            completed = false,
+            exercises = listOf(
+                Exercise("Barbell Squat", "4", "8-10", false),
+                Exercise("Romanian Deadlift", "3", "10-12", false),
+                Exercise("Leg Press", "3", "12-15", false),
+                Exercise("Leg Curl", "3", "12-15", false),
+                Exercise("Calf Raises", "4", "15-20", false)
+            )
+        ),
+        WorkoutData(
+            week = "week1",
+            workoutName = "workout2",
+            completed = false,
+            exercises = listOf(
+                Exercise("Bench Press", "4", "8-10", false),
+                Exercise("Incline Dumbbell Press", "3", "10-12", false),
+                Exercise("Cable Flyes", "3", "12-15", false),
+                Exercise("Tricep Dips", "3", "10-12", false),
+                Exercise("Overhead Tricep Extension", "3", "12-15", false)
+            )
+        ),
+        WorkoutData(
+            week = "week1",
+            workoutName = "workout3",
+            completed = false,
+            exercises = listOf(
+                Exercise("Pull-ups", "4", "8-10", false),
+                Exercise("Barbell Row", "4", "8-10", false),
+                Exercise("Lat Pulldown", "3", "10-12", false),
+                Exercise("Face Pulls", "3", "15-20", false),
+                Exercise("Barbell Curl", "3", "10-12", false),
+                Exercise("Hammer Curl", "3", "12-15", false)
+            )
+        ),
+        WorkoutData(
+            week = "week2",
+            workoutName = "workout1",
+            completed = false,
+            exercises = listOf(
+                Exercise("Deadlift", "4", "6-8", false),
+                Exercise("Front Squat", "3", "8-10", false),
+                Exercise("Bulgarian Split Squat", "3", "10-12", false),
+                Exercise("Leg Extension", "3", "12-15", false),
+                Exercise("Standing Calf Raise", "4", "12-15", false)
+            )
+        ),
+        WorkoutData(
+            week = "week2",
+            workoutName = "workout2",
+            completed = false,
+            exercises = listOf(
+                Exercise("Overhead Press", "4", "8-10", false),
+                Exercise("Lateral Raises", "3", "12-15", false),
+                Exercise("Front Raises", "3", "12-15", false),
+                Exercise("Arnold Press", "3", "10-12", false),
+                Exercise("Face Pulls", "3", "15-20", false)
+            )
+        ),
+        WorkoutData(
+            week = "week2",
+            workoutName = "workout3",
+            completed = false,
+            exercises = listOf(
+                Exercise("Incline Bench Press", "4", "8-10", false),
+                Exercise("Dumbbell Flyes", "3", "12-15", false),
+                Exercise("Close-Grip Bench Press", "3", "10-12", false),
+                Exercise("Skull Crushers", "3", "10-12", false),
+                Exercise("Cable Tricep Pushdown", "3", "12-15", false)
+            )
+        )
+    )
+}
+
 @Composable
 fun GymScreen(viewModel: AppViewModel? = null) {
-    val workouts by viewModel?.workoutPlan?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
+    // Get data from viewModel if available
+    val viewModelWorkouts by viewModel?.workoutPlan?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
     val planLoading by viewModel?.planLoading?.collectAsState() ?: remember { mutableStateOf(false) }
     val planError by viewModel?.planError?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
 
-    // Try fetching plan if we have a viewModel and no data yet
-    LaunchedEffect(Unit) {
-        if (viewModel != null && workouts.isEmpty()) {
+    // Use sample data if viewModel data is empty and not loading
+    val workouts = if (viewModelWorkouts.isEmpty() && !planLoading && viewModel != null) {
+        SampleWorkouts.sampleWorkoutPlan
+    } else if (viewModelWorkouts.isNotEmpty()) {
+        viewModelWorkouts
+    } else {
+        SampleWorkouts.sampleWorkoutPlan
+    }
+
+    // Only try fetching if viewModel exists
+    LaunchedEffect(viewModel) {
+        if (viewModel != null) {
             viewModel.fetchPlan()
         }
     }
@@ -126,49 +215,25 @@ fun GymScreen(viewModel: AppViewModel? = null) {
                         }
                     }
                 }
-                workouts.isEmpty() -> {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A45))
+                else -> {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "No workout plan yet",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Complete your profile setup to get a personalized workout plan.",
-                                color = Color.White.copy(alpha = 0.6f)
+                        items(workouts.size) { index ->
+                            val workout = workouts[index]
+                            WorkoutCard(
+                                workout = workout,
+                                onExerciseToggle = { exerciseIndex ->
+                                    viewModel?.toggleExerciseCompletion(index, exerciseIndex)
+                                },
+                                onWorkoutToggle = {
+                                    viewModel?.toggleWorkoutCompletion(index)
+                                }
                             )
                         }
                     }
                 }
-                else -> {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(workouts.size) { index ->
-                    val workout = workouts[index]
-                    WorkoutCard(
-                        workout = workout,
-                        onExerciseToggle = { exerciseIndex ->
-                            viewModel?.toggleExerciseCompletion(index, exerciseIndex)
-                        },
-                        onWorkoutToggle = {
-                            viewModel?.toggleWorkoutCompletion(index)
-                        }
-                    )
-                }
             }
-                } // end else
-            } // end when
         }
     }
 }
