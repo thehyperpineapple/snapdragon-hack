@@ -55,11 +55,11 @@ sealed class Screen(val route: String, val label: String, val icon: androidx.com
     object Home : Screen("home", "Home", Icons.Default.Home)
     object Profile : Screen("profile", "Profile", Icons.Default.Person)
     object Nutrition : Screen("nutrition", "Nutrition", Icons.Default.Fastfood)
-    object Reminders : Screen("reminders", "Reminders", Icons.Default.Alarm)
+    object Reminders : Screen("reminders", "Tasks", Icons.Default.Alarm)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     object Gym : Screen("gym", "Gym", Icons.Default.SportsGymnastics)
     object Chat : Screen("chat", "Chat", Icons.Default.Mms)
-    object DonutShops : Screen("donut_shops", "Donut Shops", Icons.Default.Fastfood)
+    object DonutShops : Screen("donut_shops", "Donut Shops", Icons.Default.DonutSmall)
 
 }
 

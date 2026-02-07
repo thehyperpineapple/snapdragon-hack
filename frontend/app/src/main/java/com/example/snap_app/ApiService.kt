@@ -10,7 +10,7 @@ import org.json.JSONObject
 import org.json.JSONArray
 
 object ApiService {
-    private const val BASE_URL = "http://192.168.1.232:5000"
+    private const val BASE_URL = "http://10.206.24.76:5000"
     private val gson = Gson()
 
     // ==================== Auth ====================
@@ -172,6 +172,21 @@ object ApiService {
             } catch (e: Exception) {
                 e.printStackTrace()
                 null
+            }
+        }
+    }
+
+    // PUT /users/<user_id>/nutrition - Update calorie goal
+    suspend fun updateCalorieGoal(userId: String, calorieGoal: Int): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = JSONObject().apply {
+                    put("calorie_goal", calorieGoal)
+                }.toString()
+                putRequest("/users/$userId/nutrition", body) != null
+            } catch (e: Exception) {
+                e.printStackTrace()
+                false
             }
         }
     }
@@ -427,6 +442,33 @@ object ApiService {
         }
     }
 
+    // GET /users/<user_id>/tracking/food
+    suspend fun getFoodLog(userId: String, date: String): FoodLogResponse? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = getRequest("/users/$userId/tracking/food?date=$date")
+                if (response != null) gson.fromJson(response, FoodLogResponse::class.java) else null
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+    // GET /users/<user_id>/tracking/calories
+    suspend fun getCalorieSummary(userId: String, date: String? = null): CalorieSummary? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val query = if (date != null) "?date=$date" else ""
+                val response = getRequest("/users/$userId/tracking/calories$query")
+                if (response != null) gson.fromJson(response, CalorieSummary::class.java) else null
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
     // POST /users/logout
     suspend fun logoutUser(userId: String): Boolean {
         return withContext(Dispatchers.IO) {
@@ -601,4 +643,28 @@ data class TrackingHistoryResponse(
 
 data class WaterResponse(
     val water_intake_ml: Int?
+)
+
+data class FoodLogEntry(
+    val name: String = "",
+    val calories: Double = 0.0,
+    val caloriesNumeric: Double = 0.0,
+    val fat_total_g: Double = 0.0,
+    val protein_g: Double = 0.0,
+    val carbohydrates_total_g: Double = 0.0,
+    val meal_type: String = ""
+)
+
+data class FoodLogResponse(
+    val date: String?,
+    val food_log: List<FoodLogEntry>?
+)
+
+data class CalorieSummary(
+    @SerializedName("date") val date: String = "",
+    @SerializedName("calorie_goal") val calorieGoal: Double = 0.0,
+    @SerializedName("calories_consumed") val caloriesConsumed: Double = 0.0,
+    @SerializedName("calories_remaining") val caloriesRemaining: Double = 0.0,
+    @SerializedName("percentage_consumed") val percentageConsumed: Double = 0.0,
+    @SerializedName("total_items") val totalItems: Int = 0
 )

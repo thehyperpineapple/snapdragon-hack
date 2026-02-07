@@ -34,6 +34,24 @@ class GenieService(private val context: Context) {
     }
     
     /**
+     * Wait for a process to exit with a timeout (compatible with API 24+)
+     * Returns the exit code if process exits within timeout, null otherwise
+     */
+    private fun waitForProcess(process: Process, timeout: Long, unit: TimeUnit): Int? {
+        val timeoutMs = unit.toMillis(timeout)
+        val startTime = System.currentTimeMillis()
+        
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            try {
+                return process.exitValue()  // Throws if process is still running
+            } catch (e: IllegalThreadStateException) {
+                Thread.sleep(100)
+            }
+        }
+        return null  // Timeout
+    }
+    
+    /**
      * Initialize Genie runtime.
      * Checks for: bundled binary in nativeLibraryDir, model files on device.
      */
@@ -82,6 +100,62 @@ class GenieService(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing: ${e.message}", e)
             false
+        }
+    }
+    
+    /**
+     * Calculate daily calorie needs using on-device LLM
+     * Based on user's age, gender, weight, height, activity level, and fitness goal
+     */
+    suspend fun calculateDailyCalories(
+        age: Int,
+        gender: String,
+        weight: Double,
+        height: Int,
+        activityLevel: String,
+        fitnessGoal: String
+    ): Int? = withContext(Dispatchers.IO) {
+        try {
+            if (!isInitialized || modelPath == null) {
+                Log.e(TAG, "Model not initialized for calorie calculation")
+                return@withContext null
+            }
+            
+            val prompt = buildString {
+                append("<|begin_of_text|>")
+                append("<|start_header_id|>system<|end_header_id|>\n\n")
+                append("You are a nutrition calculator. Calculate daily calorie needs based on user data. Respond with ONLY a number.")
+                append("<|eot_id|>")
+                append("<|start_header_id|>user<|end_header_id|>\n\n")
+                append("Calculate daily calories for:\n")
+                append("Age: $age years\n")
+                append("Gender: $gender\n")
+                append("Weight: $weight kg\n")
+                append("Height: $height cm\n")
+                append("Activity: $activityLevel\n")
+                append("Goal: $fitnessGoal\n\n")
+                append("Respond with ONLY the calorie number (e.g., 2186). No explanation.")
+                append("<|eot_id|>")
+                append("<|start_header_id|>assistant<|end_header_id|>\n\n")
+            }
+            
+            val response = runGenieInference(prompt)
+            Log.d(TAG, "Calorie calculation response: $response")
+            
+            // Extract number from response
+            val calorieMatch = Regex("\\d{3,5}").find(response)
+            val calories = calorieMatch?.value?.toIntOrNull()
+            
+            if (calories == null || calories < 1000 || calories > 5000) {
+                Log.w(TAG, "Invalid calorie value from LLM: $response")
+                return@withContext null
+            }
+            
+            Log.d(TAG, "Calculated daily calories: $calories")
+            calories
+        } catch (e: Exception) {
+            Log.e(TAG, "Error calculating calories: ${e.message}", e)
+            null
         }
     }
     
@@ -188,17 +262,17 @@ class GenieService(private val context: Context) {
                 }
             }
 
-            val exited = process.waitFor(5, TimeUnit.SECONDS)
-            if (!exited) {
+            val exitCode = waitForProcess(process, 5, TimeUnit.SECONDS)
+            if (exitCode == null) {
                 Log.w(TAG, "Process didn't exit in time, destroying")
-                process.destroyForcibly()
+                process.destroy()
             }
 
-            val exitCode = if (exited) process.exitValue() else -1
+            val resolvedExitCode = exitCode ?: -1
             promptFile.delete()
 
             val result = output.toString()
-            Log.d(TAG, "Exit code: $exitCode, output length: ${result.length}")
+            Log.d(TAG, "Exit code: $resolvedExitCode, output length: ${result.length}")
             Log.d(TAG, "Output preview: ${result.take(500)}")
 
             // Parse [BEGIN]: ... [END] markers

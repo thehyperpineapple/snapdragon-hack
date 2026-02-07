@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -48,37 +49,77 @@ fun NutritionScreen(viewModel: AppViewModel? = null) {
     val planLoading by viewModel?.planLoading?.collectAsState() ?: remember { mutableStateOf(false) }
     val planError by viewModel?.planError?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
 
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("Meal Plan", "Food Log")
+
     // Try fetching plan if we have a viewModel and no data yet
     LaunchedEffect(Unit) {
         if (viewModel != null && dietWeeks.isEmpty()) {
             viewModel.fetchPlan()
         }
+        viewModel?.fetchTodayFoodLog()
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        Column {
-            Text(
-                text = "Nutrition Plan 🍎",
-                style = MaterialTheme.typography.headlineMedium,
-                color = NeonPink,
-                fontWeight = FontWeight.Bold
-            )
+        Text(
+            text = "Nutrition Plan 🍎",
+            style = MaterialTheme.typography.headlineMedium,
+            color = NeonPink,
+            fontWeight = FontWeight.Bold
+        )
 
-            Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = "Your personalized meal plan",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.8f)
-            )
+        Text(
+            text = "Your personalized meal plan",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.8f)
+        )
 
-            Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-            when {
+        // Tab Row
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = Color(0xFF1A2A45),
+            contentColor = NeonPink
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = {
+                        Text(
+                            text = title,
+                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Content based on selected tab
+        when (selectedTab) {
+            0 -> MealPlanContent(viewModel, dietWeeks, planLoading, planError)
+            1 -> FoodLogContent(viewModel)
+        }
+    }
+}
+
+@Composable
+fun MealPlanContent(
+    viewModel: AppViewModel?,
+    dietWeeks: List<DietWeek>,
+    planLoading: Boolean,
+    planError: String?
+) {
+    when {
                 planLoading -> {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
@@ -149,22 +190,270 @@ fun NutritionScreen(viewModel: AppViewModel? = null) {
                     }
                 }
                 else -> {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                items(dietWeeks.size) { weekIndex ->
-                    val dietWeek = dietWeeks[weekIndex]
-                    DietWeekCard(
-                        dietWeek = dietWeek,
-                        onMealToggle = { mealType ->
-                            viewModel?.toggleMealCompletion(weekIndex, mealType)
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                    ) {
+                        items(dietWeeks.size) { weekIndex ->
+                            val dietWeek = dietWeeks[weekIndex]
+                            DietWeekCard(
+                                dietWeek = dietWeek,
+                                onMealToggle = { mealType ->
+                                    viewModel?.toggleMealCompletion(weekIndex, mealType)
+                                }
+                            )
                         }
+                    }
+                }
+    }
+}
+
+@Composable
+fun FoodLogContent(viewModel: AppViewModel?) {
+    val todayLog by viewModel?.todayFoodLog?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
+    val calorieSummary by viewModel?.calorieSummary?.collectAsState() ?: remember { mutableStateOf(null) }
+    val planLoading by viewModel?.planLoading?.collectAsState() ?: remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel?.fetchTodayFoodLog()
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Calorie Tracker Card
+        if (planLoading) {
+            // Show loading state while AI is calculating calorie goal
+            CalorieLoadingCard()
+            Spacer(modifier = Modifier.height(12.dp))
+        } else {
+            calorieSummary?.let { summary ->
+                Column {
+                    CalorieTrackerCard(
+                        calorieGoal = summary.calorieGoal,
+                        caloriesConsumed = summary.caloriesConsumed,
+                        caloriesRemaining = summary.caloriesRemaining,
+                        percentageConsumed = summary.percentageConsumed
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Recalculate button
+                    Button(
+                        onClick = { viewModel?.calculateAndUpdateCalories() },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1E3050),
+                            contentColor = NeonPink
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Recalculate",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Recalculate Daily Calorie Goal",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Today's Summary
+        if (todayLog.isNotEmpty()) {
+            val totalFat = todayLog.sumOf { it.fat_total_g }
+            val totalCarbs = todayLog.sumOf { it.carbohydrates_total_g }
+            val totalCalories = calorieSummary?.caloriesConsumed?.toInt() ?: 0
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A45))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Today's Summary",
+                        color = NeonPink,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        NutritionSummaryChip("${todayLog.size} items", Color(0xFF9C27B0))
+                        NutritionSummaryChip("${totalCalories} cal", Color(0xFFFF5722))
+                        NutritionSummaryChip("${String.format("%.1f", totalFat)}g fat", Color(0xFFFFC107))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        NutritionSummaryChip("${String.format("%.1f", totalCarbs)}g carbs", Color(0xFF2196F3))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CalorieTrackerCard(
+    calorieGoal: Double,
+    caloriesConsumed: Double,
+    caloriesRemaining: Double,
+    percentageConsumed: Double
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Daily Calorie Goal",
+                    color = NeonPink,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "${calorieGoal.toInt()} cal",
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LinearProgressIndicator(
+                progress = (percentageConsumed / 100).toFloat().coerceIn(0f, 1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = if (percentageConsumed > 100) Color(0xFFFF5722) else NeonPink,
+                trackColor = Color(0xFF2A2A2A)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "Consumed",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = "${caloriesConsumed.toInt()} cal",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Remaining",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = "${caloriesRemaining.toInt()} cal",
+                        color = if (caloriesRemaining < 0) Color(0xFFFF5722) else NeonPink,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
                     )
                 }
             }
-                } // end else
-            } // end when
         }
+    }
+}
+
+@Composable
+fun CalorieLoadingCard() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = NeonPink,
+                strokeWidth = 4.dp
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = "🤖 Calculating Your Optimal Calorie Goal...",
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Using on-device AI to analyze your profile",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun NutritionSummaryChip(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = color.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

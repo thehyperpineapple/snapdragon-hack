@@ -86,7 +86,7 @@ fun ChatScreen() {
                     // Remove loading message and show ready message
                     messages = messages.dropLast(1) + listOf(
                         ChatMessage(
-                            content = "✅ AI model loaded! I'm ready to chat. What would you like to know?",
+                            content = "",
                             isUser = false
                         )
                     )

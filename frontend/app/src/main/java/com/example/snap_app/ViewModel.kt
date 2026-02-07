@@ -1,12 +1,14 @@
 package com.example.snap_app
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class AppViewModel : ViewModel() {
+class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _completionPercentage = MutableStateFlow(0)
     val completionPercentage: StateFlow<Int> = _completionPercentage
 
@@ -32,6 +34,13 @@ class AppViewModel : ViewModel() {
 
     private val _planError = MutableStateFlow<String?>(null)
     val planError: StateFlow<String?> = _planError
+
+    // Food log and calorie tracking
+    private val _todayFoodLog = MutableStateFlow<List<FoodLogEntry>>(emptyList())
+    val todayFoodLog: StateFlow<List<FoodLogEntry>> = _todayFoodLog
+
+    private val _calorieSummary = MutableStateFlow<CalorieSummary?>(null)
+    val calorieSummary: StateFlow<CalorieSummary?> = _calorieSummary
 
     // Reminders state - persisted across navigation
     private val _reminders = MutableStateFlow<List<MealReminder>>(emptyList())
@@ -241,6 +250,120 @@ class AppViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _planError.value = "Network error: ${e.message}"
+                e.printStackTrace()
+            } finally {
+                _planLoading.value = false
+            }
+        }
+    }
+
+    fun fetchTodayFoodLog() {
+        viewModelScope.launch {
+            val uid = _userId.value
+            if (uid.isBlank()) return@launch
+            try {
+                val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    .format(java.util.Date())
+                val response = ApiService.getFoodLog(uid, dateStr)
+                if (response?.food_log != null) {
+                    _todayFoodLog.value = response.food_log
+                }
+                // Also fetch calorie summary
+                fetchCalorieSummary()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun fetchCalorieSummary() {
+        viewModelScope.launch {
+            val uid = _userId.value
+            if (uid.isBlank()) return@launch
+            try {
+                val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    .format(java.util.Date())
+                val summary = ApiService.getCalorieSummary(uid, dateStr)
+                _calorieSummary.value = summary
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    /**
+     * Calculate optimal daily calorie intake using on-device LLM and update nutrition profile.
+     * This should be called when user completes registration or when they click "Recalculate".
+     */
+    fun calculateAndUpdateCalories() {
+        viewModelScope.launch {
+            val uid = _userId.value
+            if (uid.isBlank()) return@launch
+            
+            _planLoading.value = true
+            
+            try {
+                // Fetch user profile data
+                val healthProfile = ApiService.getHealthProfile(uid)
+                
+                val age = healthProfile?.profile?.age
+                val gender = healthProfile?.profile?.gender
+                val weight = healthProfile?.profile?.weight
+                val height = healthProfile?.profile?.height
+                val activityLevel = healthProfile?.profile?.activity_level ?: "moderately_active"
+                val fitnessGoal = healthProfile?.profile?.fitness_goal ?: "general_health"
+                
+                if (age == null || gender == null || weight == null || height == null) {
+                    Log.e("ViewModel", "Incomplete profile data for calorie calculation")
+                    _planLoading.value = false
+                    return@launch
+                }
+                
+                // Initialize and use on-device LLM to calculate calories
+                Log.i("ViewModel", "Starting On-Device Calorie Calculation")
+                Log.i("ViewModel", "Profile: $age years, $gender, ${weight}kg, ${height}cm")
+                Log.i("ViewModel", "Activity: $activityLevel, Goal: $fitnessGoal")
+                
+                val context = getApplication<Application>().applicationContext
+                val genieService = GenieService(context)
+                
+                val initialized = genieService.initialize()
+                
+                if (!initialized) {
+                    Log.e("ViewModel", "Failed to initialize GenieService")
+                    _planLoading.value = false
+                    return@launch
+                }
+                
+                val calculatedCalories = genieService.calculateDailyCalories(
+                    age = age,
+                    gender = gender,
+                    weight = weight,
+                    height = height,
+                    activityLevel = activityLevel,
+                    fitnessGoal = fitnessGoal
+                )
+                
+                if (calculatedCalories != null) {
+                    Log.i("ViewModel", "✓ Calculated daily calories: $calculatedCalories")
+                    
+                    // Update nutrition profile with calculated calories
+                    val success = ApiService.updateCalorieGoal(uid, calculatedCalories)
+                    
+                    if (success) {
+                        Log.i("ViewModel", "✓ Updated calorie goal in database")
+                        // Refresh calorie summary to show new goal
+                        fetchCalorieSummary()
+                    } else {
+                        Log.e("ViewModel", "Failed to update calorie goal in database")
+                    }
+                } else {
+                    Log.e("ViewModel", "Failed to calculate calories with LLM")
+                }
+                
+                genieService.release()
+            } catch (e: Exception) {
+                Log.e("ViewModel", "Error during calorie calculation: ${e.message}", e)
                 e.printStackTrace()
             } finally {
                 _planLoading.value = false
