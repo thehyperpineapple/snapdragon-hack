@@ -87,5 +87,9 @@ dependencies {
     
     // NOTE: QAIRT SDK is a Snapdragon device system library, not a Maven package
     // It's pre-installed on Snapdragon 8 Elite devices via Qualcomm QCM
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+    implementation("io.coil-kt:coil-compose:2.5.0")
 }
 
