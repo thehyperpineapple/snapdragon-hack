@@ -28,12 +28,15 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 
-// FuelForm color scheme
 val DarkBlue = Color(0xFF111F35)
 val NeonPink = Color(0xFFF63049)
 val Purple = Color(0xFFD02752)
 val Burgundy = Color(0xFF8A244B)
 
+/**
+ * Main activity and application entry point.
+ * Configures edge-to-edge display and initializes the compose UI.
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +49,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/* -------------------- Screens & Routes -------------------- */
+/**
+ * Navigation destination definitions with associated UI metadata.
+ * Each screen includes route string, label, and Material icon.
+ */
 sealed class Screen(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Auth : Screen("auth", "Auth", Icons.Default.Info)
     object Login : Screen("login", "Login", Icons.Default.Info)
@@ -60,10 +66,11 @@ sealed class Screen(val route: String, val label: String, val icon: androidx.com
     object Gym : Screen("gym", "Gym", Icons.Default.SportsGymnastics)
     object Chat : Screen("chat", "Chat", Icons.Default.Mms)
     object DonutShops : Screen("donut_shops", "Donut Shops", Icons.Default.Fastfood)
-
 }
 
-
+/**
+ * Screens displayed in bottom navigation bar.
+ */
 val bottomNavItems = listOf(
     Screen.Home,
     Screen.Chat,
@@ -72,7 +79,11 @@ val bottomNavItems = listOf(
     Screen.Reminders
 )
 
-/* -------------------- Main Scaffold with Top App Bar & Bottom Nav -------------------- */
+/**
+ * Root composable managing navigation, app bar, and bottom nav.
+ * Maintains navigation state and coordinates screen transitions.
+ * Preserves onboarding form state across configuration changes.
+ */
 @Composable
 fun MainScreen() {
     val viewModel: AppViewModel = viewModel()
@@ -98,21 +109,21 @@ fun MainScreen() {
         containerColor = DarkBlue,
         topBar = {
             if (currentRoute !in listOf(
-                Screen.Auth.route,
-                Screen.Login.route,
-                Screen.SignUp.route,
-                Screen.Welcome.route
-            )) {
+                    Screen.Auth.route,
+                    Screen.Login.route,
+                    Screen.SignUp.route,
+                    Screen.Welcome.route
+                )) {
                 TopAppBarWithMenu(navController = navController, currentRoute = currentRoute)
             }
         },
         bottomBar = {
             if (currentRoute !in listOf(
-                Screen.Auth.route,
-                Screen.Login.route,
-                Screen.SignUp.route,
-                Screen.Welcome.route
-            )) {
+                    Screen.Auth.route,
+                    Screen.Login.route,
+                    Screen.SignUp.route,
+                    Screen.Welcome.route
+                )) {
                 BottomNavigationBar(navController = navController)
             }
         }
@@ -218,12 +229,17 @@ fun MainScreen() {
                 )
             }
             composable(Screen.Chat.route) { ChatScreen() }
-            //composable(Screen.Camera.route) { CameraScreen() }
         }
     }
 }
 
-/* -------------------- Top App Bar with Menu -------------------- */
+/**
+ * Top navigation bar with app branding and quick actions.
+ * Displays logo, app name, and icons for donut shops and settings.
+ *
+ * @param navController Navigation controller for handling menu actions
+ * @param currentRoute Current active route for conditional navigation
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopAppBarWithMenu(navController: NavHostController, currentRoute: String?) {
@@ -285,7 +301,11 @@ fun TopAppBarWithMenu(navController: NavHostController, currentRoute: String?) {
     )
 }
 
-/* -------------------- Bottom Navigation -------------------- */
+/**
+ * Bottom navigation bar for primary app sections.
+ * Implements tab-based navigation with state preservation.
+ * Home tab clears back stack to ensure clean navigation reset.
+ */
 @Composable
 fun BottomNavigationBar(navController: NavHostController) {
     val currentBackStack by navController.currentBackStackEntryAsState()
@@ -309,16 +329,14 @@ fun BottomNavigationBar(navController: NavHostController) {
                 ),
                 onClick = {
                     if (screen.route == Screen.Home.route) {
-                        // Special handling for Home - clear back stack completely
+                        // Clear back stack on home tap to provide fresh dashboard view
                         navController.navigate(screen.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 inclusive = false
                             }
                             launchSingleTop = true
-                            // Don't restore state for home
                         }
                     } else {
-                        // Normal navigation for other tabs
                         navController.navigate(screen.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
@@ -333,8 +351,6 @@ fun BottomNavigationBar(navController: NavHostController) {
     }
 }
 
-
-/* -------------------- Preview -------------------- */
 @Preview(showBackground = true)
 @Composable
 fun AppPreview() {

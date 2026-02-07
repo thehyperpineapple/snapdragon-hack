@@ -31,7 +31,16 @@ import java.util.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 
-
+/**
+ * Main dashboard screen displaying daily progress and navigation.
+ * Shows animated progress circle, motivational meme based on completion,
+ * and quick action cards for core features.
+ *
+ * @param viewModel App-wide view model tracking user state and progress
+ * @param onNavigateToNutrition Callback to navigate to nutrition tracking
+ * @param onNavigateToGym Callback to navigate to workout tracking
+ * @param onNavigateToChat Callback to navigate to AI coach chat
+ */
 @Composable
 fun HomeScreen(
     viewModel: AppViewModel,
@@ -42,14 +51,12 @@ fun HomeScreen(
     val completionPercentage by viewModel.completionPercentage.collectAsState()
     val username by viewModel.username.collectAsState()
 
-    // Animate progress
     val animatedProgress by animateFloatAsState(
         targetValue = completionPercentage / 100f,
         animationSpec = tween(durationMillis = 1000),
         label = "progress"
     )
 
-    // Determine which meme to show based on completion
     val memeUrl = when {
         completionPercentage < 30 -> "https://i.ytimg.com/vi/jXdbw21SKQg/mqdefault.jpg"
         completionPercentage < 70 -> "https://static.wikia.nocookie.net/belugacinematicuniversefanon/images/6/6a/Beluga.jpg/revision/latest/thumbnail/width/360/height/360?cb=20231226224904"
@@ -85,7 +92,6 @@ fun HomeScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ){
-            // Header Section
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -105,7 +111,6 @@ fun HomeScreen(
                 )
             }
 
-            // Progress Overview Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -155,7 +160,6 @@ fun HomeScreen(
                             }
                         }
 
-                        // Circular Progress
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier.size(80.dp)
@@ -181,7 +185,6 @@ fun HomeScreen(
                         }
                     }
 
-                    // Meme Section
                     AsyncImage(
                         model = memeUrl,
                         contentDescription = "Mood indicator",
@@ -194,7 +197,6 @@ fun HomeScreen(
                 }
             }
 
-            // Quick Actions Section
             Text(
                 text = "Quick Actions",
                 style = MaterialTheme.typography.titleMedium,
@@ -207,7 +209,6 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // All cards now dark purple matching the progress card
                 ProfessionalNavigationCard(
                     title = "Nutrition Tracker",
                     subtitle = "Log meals & track calories",
@@ -245,6 +246,16 @@ fun HomeScreen(
     }
 }
 
+/**
+ * Clickable card for navigating to main app features.
+ * Uses horizontal gradient background with icon, title, and subtitle.
+ *
+ * @param title Main feature name
+ * @param subtitle Brief description of feature
+ * @param icon Material icon to display
+ * @param gradientColors Left-to-right gradient colors for background
+ * @param onClick Navigation callback
+ */
 @Composable
 fun ProfessionalNavigationCard(
     title: String,
