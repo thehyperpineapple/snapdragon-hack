@@ -128,6 +128,20 @@ def create_user_plan_ai(user_id):
     return jsonify(result), status
 
 
+@plan_bp.route('/<user_id>/plan', methods=['GET'])
+def get_user_plan(user_id):
+    """Get existing plan for a user."""
+    result, status = get_plan(user_id)
+    return jsonify(result), status
+
+
+@plan_bp.route('/<user_id>/plan', methods=['DELETE'])
+def delete_user_plan(user_id):
+    """Delete user's plan."""
+    result, status = delete_plan(user_id)
+    return jsonify(result), status
+
+
 @plan_bp.route('/<user_id>/plan/validate', methods=['POST'])
 def validate_user_plan(user_id):
     """

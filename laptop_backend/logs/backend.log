@@ -1,0 +1,12 @@
+[2026-02-07 02:43:24] INFO     [root:<module>:83] ================================================================================
+[2026-02-07 02:43:24] INFO     [root:<module>:84] Backend Application Started
+[2026-02-07 02:43:24] INFO     [root:<module>:85] Logging initialized: 2026-02-07T02:43:24.147845
+[2026-02-07 02:43:24] INFO     [root:<module>:86] ================================================================================
+[2026-02-07 02:43:25] ERROR    [root:<module>:111] Failed to initialize Firebase: The default Firebase app does not exist. Make sure to initialize the SDK by calling initialize_app().
+Traceback (most recent call last):
+  File "/Users/pxndey/dev/snapdragon-hack/laptop_backend/extensions.py", line 94, in <module>
+    if not firebase_admin.get_app():
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pxndey/miniconda3/lib/python3.12/site-packages/firebase_admin/__init__.py", line 137, in get_app
+    raise ValueError(
+ValueError: The default Firebase app does not exist. Make sure to initialize the SDK by calling initialize_app().
