@@ -15,6 +15,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * Landing authentication screen with branding and navigation options.
+ *
+ * @param onLoginClick Callback when user taps login button
+ * @param onSignUpClick Callback when user taps sign up button
+ * @param onDevSkipClick Development shortcut to bypass authentication
+ */
 @Composable
 fun AuthScreen(
     onLoginClick: () -> Unit,
@@ -42,7 +49,6 @@ fun AuthScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // App Logo
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = "FuelForm",
@@ -66,7 +72,6 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Login Button
                 Button(
                     onClick = onLoginClick,
                     modifier = Modifier
@@ -83,7 +88,6 @@ fun AuthScreen(
                     )
                 }
 
-                // Sign Up Button
                 OutlinedButton(
                     onClick = onSignUpClick,
                     modifier = Modifier
@@ -107,7 +111,6 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Dev Skip Button
                 TextButton(
                     onClick = onDevSkipClick,
                     modifier = Modifier.fillMaxWidth()

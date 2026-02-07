@@ -9,13 +9,18 @@ import com.google.gson.annotations.SerializedName
 import org.json.JSONObject
 import org.json.JSONArray
 
+/**
+ * API service layer for fitness/nutrition tracking backend.
+ * All network calls are suspended and execute on IO dispatcher.
+ */
 object ApiService {
     private const val BASE_URL = "http://192.168.1.232:5000"
     private val gson = Gson()
 
-    // ==================== Auth ====================
-
-    // POST /register
+    /**
+     * Register a new user account.
+     * @return RegisterResponse with user_id on success, null on failure
+     */
     suspend fun registerUser(email: String, password: String, username: String): RegisterResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -33,7 +38,10 @@ object ApiService {
         }
     }
 
-    // POST /login (custom — sends email+password, expects user_id back)
+    /**
+     * Authenticate user with email and password.
+     * @return LoginResponse with user_id on success, null on failure
+     */
     suspend fun loginUser(email: String, password: String): LoginResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -50,7 +58,9 @@ object ApiService {
         }
     }
 
-    // GET /users/<user_id>
+    /**
+     * Fetch user profile by ID.
+     */
     suspend fun getUser(userId: String): UserResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -63,7 +73,10 @@ object ApiService {
         }
     }
 
-    // DELETE /users/<user_id>
+    /**
+     * Delete user account permanently.
+     * @return true if deletion successful
+     */
     suspend fun deleteUser(userId: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
@@ -75,9 +88,10 @@ object ApiService {
         }
     }
 
-    // ==================== Health Profile ====================
-
-    // POST /users/<user_id>/health
+    /**
+     * Create health profile with physical metrics and goals.
+     * Calculates BMI and baseline caloric needs server-side.
+     */
     suspend fun createHealthProfile(
         userId: String,
         weight: Double,
@@ -110,7 +124,9 @@ object ApiService {
         }
     }
 
-    // GET /users/<user_id>/health
+    /**
+     * Retrieve existing health profile.
+     */
     suspend fun getHealthProfile(userId: String): HealthProfileResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -123,7 +139,10 @@ object ApiService {
         }
     }
 
-    // PUT /users/<user_id>/health
+    /**
+     * Update specific fields in health profile.
+     * @param updates Map of field names to new values
+     */
     suspend fun updateHealthProfile(userId: String, updates: Map<String, Any>): Boolean {
         return withContext(Dispatchers.IO) {
             try {
@@ -136,9 +155,10 @@ object ApiService {
         }
     }
 
-    // ==================== Nutrition Profile ====================
-
-    // POST /users/<user_id>/nutrition
+    /**
+     * Create nutrition profile with dietary restrictions and preferences.
+     * Calculates macro targets based on health profile and goals.
+     */
     suspend fun createNutritionProfile(
         userId: String,
         dietType: String,
@@ -163,7 +183,9 @@ object ApiService {
         }
     }
 
-    // GET /users/<user_id>/nutrition
+    /**
+     * Retrieve existing nutrition profile with calculated macro goals.
+     */
     suspend fun getNutritionProfile(userId: String): NutritionProfileResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -176,9 +198,11 @@ object ApiService {
         }
     }
 
-    // ==================== Plans ====================
-
-    // POST /users/<user_id>/plan
+    /**
+     * Generate comprehensive fitness plan (diet + workouts).
+     * @param useAi If true, uses AI generation; otherwise uses template-based approach
+     * @return PlanResponse with complete weekly schedule
+     */
     suspend fun createPlan(
         userId: String,
         planType: String,
@@ -205,7 +229,9 @@ object ApiService {
         }
     }
 
-    // GET /users/<user_id>/plan
+    /**
+     * Retrieve active fitness plan.
+     */
     suspend fun getPlan(userId: String): PlanResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -218,7 +244,9 @@ object ApiService {
         }
     }
 
-    // DELETE /users/<user_id>/plan
+    /**
+     * Delete active plan.
+     */
     suspend fun deletePlan(userId: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
@@ -230,7 +258,10 @@ object ApiService {
         }
     }
 
-    // PUT /users/<user_id>/plan/adjust
+    /**
+     * Request AI-powered plan adjustments based on user feedback.
+     * Uses LLM to modify existing plan while maintaining consistency.
+     */
     suspend fun adjustPlan(userId: String, adjustmentRequest: String, userFeedback: String): PlanResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -247,7 +278,11 @@ object ApiService {
         }
     }
 
-    // PUT /users/<user_id>/plan/nutrition/adjust
+    /**
+     * Adjust nutrition plan for specific day/week.
+     * @param extraCalories Additional calories needed (e.g., for intense workout day)
+     * @param dayOfWeek 0=Monday, 6=Sunday
+     */
     suspend fun adjustNutritionPlan(
         userId: String,
         weekName: String,
@@ -271,7 +306,10 @@ object ApiService {
         }
     }
 
-    // PUT /users/<user_id>/plan/workout/adjust
+    /**
+     * Adjust workout plan when workouts are missed.
+     * Backend redistributes missed exercises to maintain weekly volume.
+     */
     suspend fun adjustWorkoutPlan(
         userId: String,
         weekName: String,
@@ -293,7 +331,10 @@ object ApiService {
         }
     }
 
-    // POST /users/<user_id>/plan/validate
+    /**
+     * Validate current plan against user's health profile and goals.
+     * Returns alignment score and actionable recommendations.
+     */
     suspend fun validatePlan(userId: String): ValidationResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -306,9 +347,10 @@ object ApiService {
         }
     }
 
-    // ==================== Tracking ====================
-
-    // GET /users/<user_id>/tracking/daily
+    /**
+     * Get daily tracking log for specific date.
+     * @param date Optional ISO date string (YYYY-MM-DD), defaults to today
+     */
     suspend fun getDailyLog(userId: String, date: String? = null): DailyLogResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -322,7 +364,9 @@ object ApiService {
         }
     }
 
-    // GET /users/<user_id>/tracking/history
+    /**
+     * Get historical tracking data across all days.
+     */
     suspend fun getTrackingHistory(userId: String): TrackingHistoryResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -335,7 +379,10 @@ object ApiService {
         }
     }
 
-    // POST /users/<user_id>/tracking/meals
+    /**
+     * Log a meal entry for specific date and meal type.
+     * @param mealType breakfast, lunch, dinner, or snack
+     */
     suspend fun logMeal(userId: String, date: String, mealType: String, meal: Meal): Boolean {
         return withContext(Dispatchers.IO) {
             try {
@@ -345,6 +392,7 @@ object ApiService {
                     put("items", JSONArray().apply {
                         put(JSONObject().apply {
                             put("name", meal.aiDesc)
+                            // Strip units and parse calories - backend expects integer
                             put("calories", meal.calories.replace("g", "").toIntOrNull() ?: 0)
                         })
                     })
@@ -357,7 +405,10 @@ object ApiService {
         }
     }
 
-    // POST /users/<user_id>/tracking/workout
+    /**
+     * Log workout completion and exercise details.
+     * @param completed Whether full workout was completed
+     */
     suspend fun logWorkout(
         userId: String,
         date: String,
@@ -371,6 +422,7 @@ object ApiService {
                 exercises.forEach { ex ->
                     exercisesArray.put(JSONObject().apply {
                         put("name", ex.name)
+                        // Default to 3x12 if parsing fails
                         put("sets", ex.sets.toIntOrNull() ?: 3)
                         put("reps", ex.reps.toIntOrNull() ?: 12)
                     })
@@ -389,7 +441,11 @@ object ApiService {
         }
     }
 
-    // POST /users/<user_id>/tracking/water
+    /**
+     * Log water intake for today.
+     * @param amountMl Water consumed in milliliters
+     * @return Updated total water intake for the day
+     */
     suspend fun logWater(userId: String, amountMl: Int): WaterResponse? {
         return withContext(Dispatchers.IO) {
             try {
@@ -405,7 +461,11 @@ object ApiService {
         }
     }
 
-    // POST /users/<user_id>/tracking/wellness
+    /**
+     * Log wellness metrics for today.
+     * @param mood String descriptor (e.g., "great", "good", "tired")
+     * @param energyLevel 1-10 scale
+     */
     suspend fun logWellness(
         userId: String,
         sleepHours: Double,
@@ -427,7 +487,9 @@ object ApiService {
         }
     }
 
-    // POST /users/logout
+    /**
+     * Log user out and invalidate session server-side.
+     */
     suspend fun logoutUser(userId: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
@@ -441,8 +503,6 @@ object ApiService {
             }
         }
     }
-
-    // ==================== HTTP Helpers ====================
 
     private fun getRequest(path: String): String? {
         val url = URL("$BASE_URL$path")
@@ -466,7 +526,7 @@ object ApiService {
         conn.setRequestProperty("Content-Type", "application/json")
         conn.doOutput = true
         conn.connectTimeout = 30000
-        conn.readTimeout = 60000 // longer for AI plan generation
+        conn.readTimeout = 60000 // Extended timeout for AI plan generation
         conn.outputStream.write(body.toByteArray())
         return if (conn.responseCode in 200..299) {
             conn.inputStream.bufferedReader().readText()
@@ -504,7 +564,7 @@ object ApiService {
     }
 }
 
-// ==================== Response Models ====================
+// Response Models
 
 data class RegisterResponse(
     @SerializedName("userId") val user_id: String?,
