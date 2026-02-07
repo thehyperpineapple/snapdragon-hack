@@ -130,19 +130,45 @@ fun GymScreen(viewModel: AppViewModel? = null) {
     val planLoading by viewModel?.planLoading?.collectAsState() ?: remember { mutableStateOf(false) }
     val planError by viewModel?.planError?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
 
-    // Use sample data if viewModel data is empty and not loading
-    val workouts = if (viewModelWorkouts.isEmpty() && !planLoading && viewModel != null) {
-        SampleWorkouts.sampleWorkoutPlan
-    } else if (viewModelWorkouts.isNotEmpty()) {
+    // Local state for sample workouts when offline
+    var localWorkouts by remember { mutableStateOf(SampleWorkouts.sampleWorkoutPlan) }
+
+    // Determine which workouts to use
+    val workouts = if (viewModelWorkouts.isNotEmpty()) {
         viewModelWorkouts
     } else {
-        SampleWorkouts.sampleWorkoutPlan
+        localWorkouts
     }
+
+    val isUsingSampleData = viewModelWorkouts.isEmpty()
 
     // Only try fetching if viewModel exists
     LaunchedEffect(viewModel) {
         if (viewModel != null) {
             viewModel.fetchPlan()
+        }
+    }
+
+    // Local toggle functions for sample data
+    fun toggleLocalExerciseCompletion(workoutIndex: Int, exerciseIndex: Int) {
+        localWorkouts = localWorkouts.toMutableList().apply {
+            val workout = this[workoutIndex]
+            val updatedExercises = workout.exercises.toMutableList().apply {
+                this[exerciseIndex] = this[exerciseIndex].copy(completed = !this[exerciseIndex].completed)
+            }
+            this[workoutIndex] = workout.copy(exercises = updatedExercises)
+        }
+    }
+
+    fun toggleLocalWorkoutCompletion(workoutIndex: Int) {
+        localWorkouts = localWorkouts.toMutableList().apply {
+            val workout = this[workoutIndex]
+            val newCompletedState = !workout.completed
+            val updatedExercises = workout.exercises.map { it.copy(completed = newCompletedState) }
+            this[workoutIndex] = workout.copy(
+                completed = newCompletedState,
+                exercises = updatedExercises
+            )
         }
     }
 
@@ -224,10 +250,18 @@ fun GymScreen(viewModel: AppViewModel? = null) {
                             WorkoutCard(
                                 workout = workout,
                                 onExerciseToggle = { exerciseIndex ->
-                                    viewModel?.toggleExerciseCompletion(index, exerciseIndex)
+                                    if (isUsingSampleData) {
+                                        toggleLocalExerciseCompletion(index, exerciseIndex)
+                                    } else {
+                                        viewModel?.toggleExerciseCompletion(index, exerciseIndex)
+                                    }
                                 },
                                 onWorkoutToggle = {
-                                    viewModel?.toggleWorkoutCompletion(index)
+                                    if (isUsingSampleData) {
+                                        toggleLocalWorkoutCompletion(index)
+                                    } else {
+                                        viewModel?.toggleWorkoutCompletion(index)
+                                    }
                                 }
                             )
                         }
@@ -357,7 +391,7 @@ fun ExerciseItem(
     onToggle: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxSize()
     ) {
         Row(
             modifier = Modifier
