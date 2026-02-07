@@ -7,7 +7,7 @@ import logging
 from typing import Dict, Optional
 import numpy as np
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('ai')
 
 
 class KVCacheManager:
@@ -27,7 +27,7 @@ class KVCacheManager:
         self.cache: Dict[str, np.ndarray] = {}
         self.cache_hits = 0
         self.cache_misses = 0
-        logger.info(f"KV Cache initialized with {max_cache_size_mb}MB limit")
+        logger.info(f"AI_CACHE: KV Cache initialized with {max_cache_size_mb}MB limit")
 
     def get(self, key: str) -> Optional[np.ndarray]:
         """
@@ -41,11 +41,11 @@ class KVCacheManager:
         """
         if key in self.cache:
             self.cache_hits += 1
-            logger.debug(f"Cache hit for key: {key[:50]}...")
+            logger.debug(f"AI_CACHE: Cache HIT for key: {key[:50]}...")
             return self.cache[key]
 
         self.cache_misses += 1
-        logger.debug(f"Cache miss for key: {key[:50]}...")
+        logger.debug(f"AI_CACHE: Cache MISS for key: {key[:50]}...")
         return None
 
     def put(self, key: str, value: np.ndarray):
@@ -64,17 +64,18 @@ class KVCacheManager:
             evicted_size = self.cache[oldest_key].nbytes / (1024 * 1024)
             del self.cache[oldest_key]
             current_size_mb -= evicted_size
-            logger.debug(f"Evicted cache entry: {oldest_key[:50]}... ({evicted_size:.2f}MB)")
+            logger.debug(f"AI_CACHE: Evicted cache entry: {oldest_key[:50]}... ({evicted_size:.2f}MB)")
 
         self.cache[key] = value
-        logger.debug(f"Cached entry: {key[:50]}... ({value.nbytes / (1024 * 1024):.2f}MB)")
+        value_size_mb = value.nbytes / (1024 * 1024)
+        logger.debug(f"AI_CACHE: Stored cache entry: {key[:50]}... ({value_size_mb:.2f}MB), total_cache={current_size_mb + value_size_mb:.2f}MB")
 
     def clear(self):
         """Clear all cache entries."""
         self.cache.clear()
         self.cache_hits = 0
         self.cache_misses = 0
-        logger.info("KV cache cleared")
+        logger.info("AI_CACHE: KV cache cleared")
 
     def get_stats(self) -> Dict:
         """

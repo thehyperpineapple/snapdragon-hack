@@ -5,6 +5,7 @@ Uses NPU-accelerated LLM for intelligent plan generation
 
 from flask import Blueprint, jsonify, request
 import logging
+import time
 
 from services.plan_service import create_plan, get_plan, update_plan, delete_plan
 from services.health_service import get_health_data
@@ -14,6 +15,7 @@ from ai.prompts import plan_prompts
 from ai.utils.model_utils import format_response, merge_user_context, format_error_response
 
 logger = logging.getLogger(__name__)
+ai_logger = logging.getLogger('ai')
 
 plan_ai_bp = Blueprint('plan_ai', __name__, url_prefix='/users')
 
@@ -51,6 +53,9 @@ def create_user_plan_ai(user_id):
 
     if use_ai:
         try:
+            ai_logger.info(f"AI_USAGE: Initiating AI plan generation - userId={user_id}, plan_type={plan_type}")
+            start_time = time.time()
+
             # Get NPU engine instance
             npu_engine = get_npu_engine()
 
@@ -59,7 +64,7 @@ def create_user_plan_ai(user_id):
             nutrition_response, nutrition_status = get_nutrition_data(user_id)
 
             if health_status != 200 or nutrition_status != 200:
-                logger.warning(f"Incomplete user data for {user_id}, using available data")
+                ai_logger.warning(f"AI_USAGE: Incomplete user data for userId={user_id}, using available data")
 
             user_context = merge_user_context(
                 health_response.get('profile', {}),
@@ -70,7 +75,7 @@ def create_user_plan_ai(user_id):
             # Generate prompt
             prompt = plan_prompts.generate_plan_prompt(user_context, plan_type)
 
-            logger.info(f"Generating {plan_type} plan for user {user_id} using NPU")
+            ai_logger.info(f"AI_INFERENCE: Starting inference for userId={user_id}, plan_type={plan_type}")
 
             # Generate plan using NPU
             raw_output = npu_engine.generate(
@@ -84,7 +89,7 @@ def create_user_plan_ai(user_id):
             formatted = format_response(raw_output, expected_format="json")
 
             if not formatted['success']:
-                logger.error(f"Failed to parse AI response: {formatted['error']}")
+                ai_logger.error(f"AI_INFERENCE: Failed to parse AI response for userId={user_id}: {formatted['error']}")
                 return jsonify({
                     'error': 'AI generation failed',
                     'details': formatted['error'],
@@ -92,6 +97,7 @@ def create_user_plan_ai(user_id):
                 }), 500
 
             ai_plan = formatted['data']
+            elapsed_time = time.time() - start_time
 
             # Extract diet and workout plans
             if 'diet' in ai_plan:
@@ -103,10 +109,13 @@ def create_user_plan_ai(user_id):
             plan_data['ai_generated'] = True
             plan_data['generation_method'] = 'npu_llm'
 
+            ai_logger.info(f"AI_INFERENCE: Inference completed successfully for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
+
         except Exception as e:
-            logger.error(f"AI generation error: {e}", exc_info=True)
+            ai_logger.error(f"AI_INFERENCE: AI generation error for userId={user_id}: {e}", exc_info=True)
             return jsonify(format_error_response(e, "AI plan generation")), 500
     else:
+        ai_logger.info(f"AI_NON_USAGE: Mock data used instead of AI for userId={user_id}, plan_type={plan_type}")
         # Fallback to mock data
         if plan_type in ['diet', 'combined']:
             plan_data['diet'] = generate_mock_diet_plan()
@@ -126,10 +135,13 @@ def validate_user_plan(user_id):
 
     Returns insights and recommendations.
     """
+    ai_logger.info(f"AI_INFERENCE: Starting plan validation for userId={user_id}")
+    start_time = time.time()
     try:
         # Get current plan
         plan_response, plan_status = get_plan(user_id)
         if plan_status != 200:
+            ai_logger.warning(f"AI_INFERENCE: No plan found for validation - userId={user_id}")
             return jsonify({'error': 'No plan found'}), 404
 
         # Get user context
@@ -159,10 +171,14 @@ def validate_user_plan(user_id):
         formatted = format_response(raw_output, expected_format="json")
 
         if not formatted['success']:
+            ai_logger.error(f"AI_INFERENCE: Plan validation analysis failed for userId={user_id}")
             return jsonify({
                 'error': 'Analysis failed',
                 'details': formatted['error']
             }), 500
+
+        elapsed_time = time.time() - start_time
+        ai_logger.info(f"AI_INFERENCE: Plan validation completed for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
 
         return jsonify({
             'validation': formatted['data'],
@@ -170,7 +186,7 @@ def validate_user_plan(user_id):
         }), 200
 
     except Exception as e:
-        logger.error(f"Plan validation error: {e}", exc_info=True)
+        ai_logger.error(f"AI_INFERENCE: Plan validation error for userId={user_id}: {e}", exc_info=True)
         return jsonify(format_error_response(e, "plan validation")), 500
 
 
@@ -190,10 +206,14 @@ def adjust_user_plan(user_id):
     if not data.get('adjustment_request'):
         return jsonify({'error': 'adjustment_request required'}), 400
 
+    ai_logger.info(f"AI_INFERENCE: Starting plan adjustment for userId={user_id}, request={data.get('adjustment_request')}")
+    start_time = time.time()
+
     try:
         # Get current plan
         plan_response, plan_status = get_plan(user_id)
         if plan_status != 200:
+            ai_logger.warning(f"AI_INFERENCE: No plan found for adjustment - userId={user_id}")
             return jsonify({'error': 'No plan found'}), 404
 
         current_plan = plan_response.get('plan', {})
@@ -217,19 +237,22 @@ def adjust_user_plan(user_id):
         formatted = format_response(raw_output, expected_format="json")
 
         if not formatted['success']:
+            ai_logger.error(f"AI_INFERENCE: Plan adjustment failed for userId={user_id}")
             return jsonify({
                 'error': 'Adjustment failed',
                 'details': formatted['error']
             }), 500
 
         adjusted_plan = formatted['data']
+        elapsed_time = time.time() - start_time
+        ai_logger.info(f"AI_INFERENCE: Plan adjustment completed for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
 
         # Update plan in database
         result, status = update_plan(user_id, adjusted_plan)
         return jsonify(result), status
 
     except Exception as e:
-        logger.error(f"Plan adjustment error: {e}", exc_info=True)
+        ai_logger.error(f"AI_INFERENCE: Plan adjustment error for userId={user_id}: {e}", exc_info=True)
         return jsonify(format_error_response(e, "plan adjustment")), 500
 
 

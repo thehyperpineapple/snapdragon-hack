@@ -6,6 +6,7 @@ It registers blueprints and sets up the application.
 """
 
 import os
+import logging
 from dotenv import load_dotenv
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -13,8 +14,10 @@ from flask_cors import CORS
 # Load environment variables first
 load_dotenv()
 
-# Import extensions (initializes Firebase)
+# Import extensions (initializes Firebase and logging)
 import extensions  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 
 def create_app():
@@ -44,6 +47,7 @@ def create_app():
     @app.route('/health', methods=['GET'])
     def health_check():
         """Basic health check endpoint."""
+        logger.debug("Health check endpoint accessed")
         return jsonify({
             'status': 'ok',
             'service': 'nutrition-workout-api'
@@ -94,14 +98,17 @@ def create_app():
     # Error handlers
     @app.errorhandler(400)
     def bad_request(error):
+        logger.warning(f"Bad request: {str(error)}")
         return jsonify({'error': 'Bad request', 'message': str(error)}), 400
-    
+
     @app.errorhandler(404)
     def not_found(error):
+        logger.warning(f"Resource not found: {str(error)}")
         return jsonify({'error': 'Not found', 'message': 'The requested resource was not found'}), 404
-    
+
     @app.errorhandler(500)
     def internal_error(error):
+        logger.error(f"Internal server error: {str(error)}", exc_info=True)
         return jsonify({'error': 'Internal server error', 'message': 'An unexpected error occurred'}), 500
     
     return app
@@ -116,12 +123,10 @@ if __name__ == '__main__':
     host = os.getenv('FLASK_HOST', '0.0.0.0')
     port = int(os.getenv('FLASK_PORT', 5000))
     debug = os.getenv('FLASK_DEBUG', 'true').lower() == 'true'
-    
-    print(f"\n{'='*50}")
-    print("Nutrition & Workout API")
-    print(f"{'='*50}")
-    print(f"Running on http://{host}:{port}")
-    print(f"Debug mode: {debug}")
-    print(f"{'='*50}\n")
-    
+
+    logger.info("="*80)
+    logger.info("Starting Nutrition & Workout API")
+    logger.info(f"Host: {host}, Port: {port}, Debug: {debug}")
+    logger.info("="*80)
+
     app.run(host=host, port=port, debug=debug)

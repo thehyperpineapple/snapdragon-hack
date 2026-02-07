@@ -5,6 +5,7 @@ Provides intelligent health and nutrition insights
 
 from flask import Blueprint, jsonify, request
 import logging
+import time
 
 from services.health_service import (
     post_health_data, get_health_data, patch_health_data, delete_health_data
@@ -17,6 +18,7 @@ from ai.prompts import health_prompts, nutrition_prompts
 from ai.utils.model_utils import format_response, format_error_response
 
 logger = logging.getLogger(__name__)
+ai_logger = logging.getLogger('ai')
 
 user_ai_bp = Blueprint('user_ai', __name__, url_prefix='/users')
 
@@ -61,6 +63,8 @@ def update_health_profile_ai(user_id):
 
     # Generate AI insights if requested
     if generate_insights:
+        ai_logger.info(f"AI_INFERENCE: Starting health insights generation for userId={user_id}")
+        start_time = time.time()
         try:
             # Get updated health data
             health_response, _ = get_health_data(user_id)
@@ -68,8 +72,6 @@ def update_health_profile_ai(user_id):
 
             # Generate prompt
             prompt = health_prompts.analyze_health_metrics_prompt(health_data)
-
-            logger.info(f"Generating health insights for user {user_id}")
 
             # Get AI analysis
             npu_engine = get_npu_engine()
@@ -84,17 +86,22 @@ def update_health_profile_ai(user_id):
 
             if formatted['success']:
                 result['ai_insights'] = formatted['data']
+                elapsed_time = time.time() - start_time
+                ai_logger.info(f"AI_INFERENCE: Health insights generated successfully for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
             else:
+                ai_logger.error(f"AI_INFERENCE: Health insights generation failed for userId={user_id}")
                 result['ai_insights'] = {
                     'error': 'Failed to generate insights',
                     'details': formatted['error']
                 }
 
         except Exception as e:
-            logger.error(f"Health insights error: {e}", exc_info=True)
+            ai_logger.error(f"AI_INFERENCE: Health insights error for userId={user_id}: {e}", exc_info=True)
             result['ai_insights'] = {
                 'error': str(e)
             }
+    else:
+        ai_logger.info(f"AI_NON_USAGE: Health insights not requested for userId={user_id}")
 
     return jsonify(result), 200
 
@@ -104,10 +111,13 @@ def analyze_health_metrics(user_id):
     """
     Get comprehensive AI analysis of health metrics.
     """
+    ai_logger.info(f"AI_INFERENCE: Starting comprehensive health analysis for userId={user_id}")
+    start_time = time.time()
     try:
         # Get health data
         health_response, status = get_health_data(user_id)
         if status != 200:
+            ai_logger.warning(f"AI_INFERENCE: Health profile not found for userId={user_id}")
             return jsonify({'error': 'Health profile not found'}), 404
 
         health_data = health_response.get('profile', {})
@@ -127,10 +137,14 @@ def analyze_health_metrics(user_id):
         formatted = format_response(raw_output, expected_format="json")
 
         if not formatted['success']:
+            ai_logger.error(f"AI_INFERENCE: Health analysis failed for userId={user_id}")
             return jsonify({
                 'error': 'Analysis failed',
                 'details': formatted['error']
             }), 500
+
+        elapsed_time = time.time() - start_time
+        ai_logger.info(f"AI_INFERENCE: Health analysis completed for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
 
         return jsonify({
             'analysis': formatted['data'],
@@ -138,7 +152,7 @@ def analyze_health_metrics(user_id):
         }), 200
 
     except Exception as e:
-        logger.error(f"Health analysis error: {e}", exc_info=True)
+        ai_logger.error(f"AI_INFERENCE: Health analysis error for userId={user_id}: {e}", exc_info=True)
         return jsonify(format_error_response(e, "health analysis")), 500
 
 
@@ -172,6 +186,8 @@ def update_nutrition_profile_ai(user_id):
 
     # Generate AI recommendations if requested
     if generate_recommendations:
+        ai_logger.info(f"AI_INFERENCE: Starting nutrition recommendations generation for userId={user_id}")
+        start_time = time.time()
         try:
             # Get updated data
             nutrition_response, _ = get_nutrition_data(user_id)
@@ -186,8 +202,6 @@ def update_nutrition_profile_ai(user_id):
                 health_data
             )
 
-            logger.info(f"Generating nutrition recommendations for user {user_id}")
-
             # Get AI analysis
             npu_engine = get_npu_engine()
             raw_output = npu_engine.generate(
@@ -201,17 +215,22 @@ def update_nutrition_profile_ai(user_id):
 
             if formatted['success']:
                 result['ai_recommendations'] = formatted['data']
+                elapsed_time = time.time() - start_time
+                ai_logger.info(f"AI_INFERENCE: Nutrition recommendations generated for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
             else:
+                ai_logger.error(f"AI_INFERENCE: Nutrition recommendations generation failed for userId={user_id}")
                 result['ai_recommendations'] = {
                     'error': 'Failed to generate recommendations',
                     'details': formatted['error']
                 }
 
         except Exception as e:
-            logger.error(f"Nutrition recommendations error: {e}", exc_info=True)
+            ai_logger.error(f"AI_INFERENCE: Nutrition recommendations error for userId={user_id}: {e}", exc_info=True)
             result['ai_recommendations'] = {
                 'error': str(e)
             }
+    else:
+        ai_logger.info(f"AI_NON_USAGE: Nutrition recommendations not requested for userId={user_id}")
 
     return jsonify(result), 200
 
@@ -221,12 +240,15 @@ def analyze_nutrition_profile(user_id):
     """
     Get comprehensive AI analysis of nutrition profile.
     """
+    ai_logger.info(f"AI_INFERENCE: Starting comprehensive nutrition analysis for userId={user_id}")
+    start_time = time.time()
     try:
         # Get nutrition and health data
         nutrition_response, nutrition_status = get_nutrition_data(user_id)
         health_response, health_status = get_health_data(user_id)
 
         if nutrition_status != 200:
+            ai_logger.warning(f"AI_INFERENCE: Nutrition profile not found for userId={user_id}")
             return jsonify({'error': 'Nutrition profile not found'}), 404
 
         nutrition_data = nutrition_response.get('nutrition', {})
@@ -250,10 +272,14 @@ def analyze_nutrition_profile(user_id):
         formatted = format_response(raw_output, expected_format="json")
 
         if not formatted['success']:
+            ai_logger.error(f"AI_INFERENCE: Nutrition analysis failed for userId={user_id}")
             return jsonify({
                 'error': 'Analysis failed',
                 'details': formatted['error']
             }), 500
+
+        elapsed_time = time.time() - start_time
+        ai_logger.info(f"AI_INFERENCE: Nutrition analysis completed for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
 
         return jsonify({
             'analysis': formatted['data'],
@@ -261,7 +287,7 @@ def analyze_nutrition_profile(user_id):
         }), 200
 
     except Exception as e:
-        logger.error(f"Nutrition analysis error: {e}", exc_info=True)
+        ai_logger.error(f"AI_INFERENCE: Nutrition analysis error for userId={user_id}: {e}", exc_info=True)
         return jsonify(format_error_response(e, "nutrition analysis")), 500
 
 
@@ -289,10 +315,14 @@ def get_meal_suggestions(user_id):
     if not meal_type:
         return jsonify({'error': 'meal_type required'}), 400
 
+    ai_logger.info(f"AI_INFERENCE: Starting meal suggestions generation for userId={user_id}, meal_type={meal_type}")
+    start_time = time.time()
+
     try:
         # Get nutrition preferences
         nutrition_response, status = get_nutrition_data(user_id)
         if status != 200:
+            ai_logger.warning(f"AI_INFERENCE: Nutrition profile not found for userId={user_id}")
             return jsonify({'error': 'Nutrition profile not found'}), 404
 
         nutrition_prefs = nutrition_response.get('nutrition', {})
@@ -316,13 +346,17 @@ def get_meal_suggestions(user_id):
         formatted = format_response(raw_output, expected_format="json")
 
         if not formatted['success']:
+            ai_logger.error(f"AI_INFERENCE: Meal suggestions generation failed for userId={user_id}")
             return jsonify({
                 'error': 'Suggestions failed',
                 'details': formatted['error']
             }), 500
 
+        elapsed_time = time.time() - start_time
+        ai_logger.info(f"AI_INFERENCE: Meal suggestions generated for userId={user_id}, elapsed_time={elapsed_time:.2f}s")
+
         return jsonify(formatted['data']), 200
 
     except Exception as e:
-        logger.error(f"Meal suggestions error: {e}", exc_info=True)
+        ai_logger.error(f"AI_INFERENCE: Meal suggestions error for userId={user_id}: {e}", exc_info=True)
         return jsonify(format_error_response(e, "meal suggestions")), 500

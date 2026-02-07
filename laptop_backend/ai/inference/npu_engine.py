@@ -25,7 +25,7 @@ except ImportError as e:
     ) from e
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('ai')
 
 
 class NPUInferenceEngine:
@@ -280,22 +280,23 @@ class NPUInferenceEngine:
         temperature = temperature or self.temperature
         top_p = top_p or self.top_p
 
-        logger.info(f"Generating with prompt: '{prompt[:100]}...'")
+        logger.info(f"AI_INFERENCE: Starting text generation with prompt: '{prompt[:100]}...'")
 
         # Check cache
         cache_key = f"{prompt}_{max_new_tokens}_{temperature}_{top_p}"
         if use_cache:
             cached_result = self.kv_cache.get(cache_key)
             if cached_result is not None:
-                logger.info("✓ Cache hit - returning cached response")
+                logger.info(f"AI_INFERENCE: Cache HIT - returning cached response (prompt_len={len(prompt)}, max_tokens={max_new_tokens})")
                 return str(cached_result)
 
         # If session not available (simulation mode), return mock response
         if self.session is None:
-            logger.warning("Running in SIMULATION mode (no QNN backend)")
+            logger.warning(f"AI_INFERENCE: Running in SIMULATION mode (no QNN backend) - prompt_len={len(prompt)}")
             mock_response = self._generate_mock_response(prompt)
             if use_cache:
                 self.kv_cache.put(cache_key, np.array(mock_response))
+            logger.info(f"AI_INFERENCE: Simulation mode response generated (response_len={len(mock_response)})")
             return mock_response
 
         # Prepare inputs
@@ -336,10 +337,10 @@ class NPUInferenceEngine:
                         inputs[f"past_key_values.{i}.value"] = kv
 
                 if step % 50 == 0 and step > 0:
-                    logger.debug(f"Generated {step} tokens...")
+                    logger.debug(f"AI_INFERENCE: Generated {step} tokens so far...")
 
             except Exception as e:
-                logger.error(f"Inference failed at step {step}: {e}")
+                logger.error(f"AI_INFERENCE: Inference failed at step {step}: {e}", exc_info=True)
                 break
 
         # Decode generated tokens
@@ -352,7 +353,7 @@ class NPUInferenceEngine:
         if use_cache:
             self.kv_cache.put(cache_key, np.array(generated_text))
 
-        logger.info(f"✓ Generation complete. Total tokens: {len(generated_ids)}")
+        logger.info(f"AI_INFERENCE: Generation complete. Total tokens generated: {len(generated_ids)}, response_length: {len(generated_text)} chars")
         return generated_text
 
     def _generate_mock_response(self, prompt: str) -> str:
