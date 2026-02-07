@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,11 +36,17 @@ data class ChatMessage(
 
 @Composable
 fun ChatScreen() {
+    val context = LocalContext.current
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
     var messageText by remember { mutableStateOf("") }
     var isTyping by remember { mutableStateOf(false) }
+    var modelLoaded by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    
+    // Initialize GenieService
+    val genieService = remember { GenieService(context) }
 
     // Template responses
     val templates = listOf(
@@ -50,25 +57,63 @@ fun ChatScreen() {
         "Track my progress"
     )
 
-    // AI responses based on user input
-    val aiResponses = mapOf(
-        "workout" to "Great question! Based on your profile, you should focus on strength training 3-4 times per week. Make sure to include compound exercises like squats, deadlifts, and bench press for maximum results! 💪",
-        "eat" to "For today, I recommend following your Week 1 meal plan: Oatmeal with berries for breakfast, grilled chicken salad for lunch, and salmon with roasted vegetables for dinner. This will keep you at your target calorie intake! 🍎",
-        "calories" to "Based on your TDEE calculation, you should aim for around 2,200-2,400 calories per day to meet your fitness goals. Make sure to balance your macros: 40% carbs, 30% protein, 30% fats! 📊",
-        "tips" to "Here are some quick fitness tips: 1) Stay hydrated - drink at least 8 glasses of water daily 💧 2) Get 7-9 hours of sleep 😴 3) Don't skip warm-ups 🔥 4) Progressive overload is key 📈 5) Rest days are important for recovery! ✨",
-        "progress" to "You're doing amazing! You've completed 65% of your workouts this week and stayed within your calorie goals for 5 out of 7 days. Keep up the excellent work! 🎉",
-        "hello" to "Hey there! 👋 I'm here to help you with your fitness and nutrition journey. What would you like to know?",
-        "help" to "I can help you with:\n• Workout plans and exercises\n• Nutrition and meal planning\n• Calorie tracking\n• Fitness tips and motivation\n• Progress tracking\n\nWhat do you need help with? 😊"
-    )
-
-    // Initial greeting
+    // Initialize model on first composition
     LaunchedEffect(Unit) {
+        // Show initial greeting
         messages = listOf(
             ChatMessage(
                 content = "Hi! 👋 I'm your AI fitness assistant. I'm here to help you achieve your fitness goals! How can I assist you today?",
                 isUser = false
+            ),
+            ChatMessage(
+                content = "Loading AI model... This may take a moment on first launch.",
+                isUser = false
             )
         )
+        
+        // Initialize GenieService in background coroutine
+        coroutineScope.launch {
+            try {
+                val initialized = genieService.initialize()
+                if (initialized) {
+                    modelLoaded = true
+                    // Remove loading message and show ready message
+                    messages = messages.dropLast(1) + listOf(
+                        ChatMessage(
+                            content = "✅ AI model loaded! I'm ready to chat. What would you like to know?",
+                            isUser = false
+                        )
+                    )
+                } else {
+                    // Model initialization failed - show error with setup instructions
+                    messages = messages.dropLast(1) + listOf(
+                        ChatMessage(
+                            content = """
+                                ❌ Model files not found!
+                                
+                                📱 To load the model on your phone:
+                                1. Connect phone via USB
+                                2. Enable USB debugging
+                                3. Run: .\push_model_to_device.ps1
+                                4. Wait for files to push
+                                5. Restart this app
+                                
+                                See DEVICE_SETUP.md for detailed instructions
+                            """.trimIndent(),
+                            isUser = false
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                errorMessage = "Error loading model: ${e.message}"
+                messages = messages.dropLast(1) + listOf(
+                    ChatMessage(
+                        content = "❌ Error loading AI model. Check logs for details: ${e.message}",
+                        isUser = false
+                    )
+                )
+            }
+        }
     }
 
     // Auto-scroll to bottom when new messages arrive
@@ -126,8 +171,8 @@ fun ChatScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Template responses (quick replies)
-            if (messages.size <= 2) {
+            // Template responses (quick replies) - only show if model is loaded and we're at the start
+            if (messages.size <= 2 && modelLoaded) {
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -179,7 +224,7 @@ fun ChatScreen() {
                 // Send Button
                 IconButton(
                     onClick = {
-                        if (messageText.isNotBlank()) {
+                        if (messageText.isNotBlank() && modelLoaded) {
                             // Add user message
                             val userMessage = ChatMessage(
                                 content = messageText,
@@ -187,37 +232,45 @@ fun ChatScreen() {
                             )
                             messages = messages + userMessage
 
-                            val userInput = messageText.lowercase()
+                            val userInput = messageText
                             messageText = ""
 
                             // Show typing indicator
                             isTyping = true
 
-                            // Simulate AI response delay
+                            // Get AI response using GenieService
                             coroutineScope.launch {
-                                delay(1500)
-                                isTyping = false
+                                try {
+                                    // Call LLM for response
+                                    val aiResponse = genieService.generateResponse(userInput)
+                                    
+                                    isTyping = false
 
-                                // Find matching AI response
-                                val aiResponse = aiResponses.entries.find {
-                                    userInput.contains(it.key)
-                                }?.value ?: "I understand you're asking about '$userInput'. While I don't have a specific answer for that, I'm here to help with your fitness journey! Try asking about workouts, nutrition, or your progress. 💪"
-
-                                val aiMessage = ChatMessage(
-                                    content = aiResponse,
-                                    isUser = false
-                                )
-                                messages = messages + aiMessage
+                                    val aiMessage = ChatMessage(
+                                        content = aiResponse,
+                                        isUser = false
+                                    )
+                                    messages = messages + aiMessage
+                                } catch (e: Exception) {
+                                    isTyping = false
+                                    errorMessage = "Error generating response: ${e.message}"
+                                    
+                                    val errorResponse = ChatMessage(
+                                        content = "Sorry, I encountered an error while processing your request: ${e.message}",
+                                        isUser = false
+                                    )
+                                    messages = messages + errorResponse
+                                }
                             }
                         }
                     },
                     modifier = Modifier
                         .size(56.dp)
                         .background(
-                            color = if (messageText.isNotBlank()) NeonPink else Color.Gray,
+                            color = if (messageText.isNotBlank() && modelLoaded) NeonPink else Color.Gray,
                             shape = CircleShape
                         ),
-                    enabled = messageText.isNotBlank()
+                    enabled = messageText.isNotBlank() && modelLoaded
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,

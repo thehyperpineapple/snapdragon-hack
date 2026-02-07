@@ -53,6 +53,7 @@ sealed class Screen(val route: String, val label: String, val icon: androidx.com
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     object Gym : Screen("gym", "Gym", Icons.Default.SportsGymnastics)
     object Chat : Screen("chat", "Chat", Icons.Default.Mms)
+    object DonutShops : Screen("donut_shops", "Donut Shops", Icons.Default.Fastfood)
 
 }
 
@@ -62,7 +63,8 @@ val bottomNavItems = listOf(
     Screen.Chat,
     Screen.Nutrition,
     Screen.Gym,
-    Screen.Reminders
+    Screen.Reminders,
+    Screen.DonutShops
 )
 
 /* -------------------- Main Scaffold with Top App Bar & Bottom Nav -------------------- */
@@ -158,6 +160,9 @@ fun MainScreen() {
             composable(Screen.Reminders.route) { RemindersScreen() }
             composable(Screen.Gym.route) { GymScreen() }
             composable(Screen.Nutrition.route) { NutritionScreen() }
+            composable(Screen.DonutShops.route) {
+                DonutShopsScreen(onBack = { navController.popBackStack() })
+            }
             composable(Screen.Profile.route) { ScreenLayout("Profile") }
             composable(Screen.Settings.route) {
                 SettingsScreen(
