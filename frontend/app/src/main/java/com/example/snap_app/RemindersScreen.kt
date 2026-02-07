@@ -23,7 +23,6 @@ import androidx.compose.ui.window.Dialog
 import java.util.*
 
 // Custom colors
-
 val DarkPink = Color(0xFF8B0A7D)
 val Yellow = Color(0xFFFFC107)
 
@@ -36,7 +35,7 @@ data class MealReminder(
 )
 
 @Composable
-fun RemindersScreen() {
+fun RemindersScreen(viewModel: AppViewModel) {
     var reminders by remember { mutableStateOf(generateReminders()) }
     var showDialog by remember { mutableStateOf(false) }
     var selectedReminder by remember { mutableStateOf<MealReminder?>(null) }
@@ -58,6 +57,11 @@ fun RemindersScreen() {
     val completionPercentage = if (reminders.isNotEmpty()) {
         (completedReminders.size.toFloat() / reminders.size.toFloat() * 100).toInt()
     } else 0
+
+    // Update ViewModel with completion percentage
+    LaunchedEffect(completionPercentage) {
+        viewModel.updateCompletionPercentage(completionPercentage)
+    }
 
     Box(
         modifier = Modifier
