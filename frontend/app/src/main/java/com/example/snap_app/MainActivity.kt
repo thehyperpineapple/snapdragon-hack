@@ -58,14 +58,12 @@ sealed class Screen(val route: String, val label: String, val icon: androidx.com
 
 val bottomNavItems = listOf(
     Screen.Home,
-    Screen.Profile,
     Screen.Messages,
     Screen.Gym,
-    Screen.Reminders,
-    Screen.Settings
+    Screen.Reminders
 )
 
-/* -------------------- Main Scaffold with Bottom Nav -------------------- */
+/* -------------------- Main Scaffold with Top App Bar & Bottom Nav -------------------- */
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
@@ -85,7 +83,17 @@ fun MainScreen() {
     var preferredCuisine by rememberSaveable { mutableStateOf("") }
 
     Scaffold(
-        containerColor = DarkBlue, // Dark blue background
+        containerColor = DarkBlue,
+        topBar = {
+            if (currentRoute !in listOf(
+                Screen.Auth.route,
+                Screen.Login.route,
+                Screen.SignUp.route,
+                Screen.Welcome.route
+            )) {
+                TopAppBarWithMenu(navController = navController)
+            }
+        },
         bottomBar = {
             if (currentRoute !in listOf(
                 Screen.Auth.route,
@@ -146,13 +154,78 @@ fun MainScreen() {
             }
             composable(Screen.Home.route) { HomeScreen() }
             composable(Screen.Reminders.route) { RemindersScreen() }
-            // make screens here guys!
             composable(Screen.Gym.route) { GymScreen() }
+            composable(Screen.Profile.route) { ScreenLayout("Profile") }
+            composable(Screen.Settings.route) { ScreenLayout("Settings") }
             //composable(Screen.Messages.route) { MessagesScreen() }
             //composable(Screen.Camera.route) { CameraScreen() }
-            //composable(Screen.Settings.route) { SettingsScreen() }
         }
     }
+}
+
+/* -------------------- Top App Bar with Menu -------------------- */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TopAppBarWithMenu(navController: NavHostController) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    TopAppBar(
+        title = {
+            Text(
+                "SnapFit",
+                color = NeonPink,
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = DarkBlue
+        ),
+        actions = {
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = !menuExpanded }
+                ) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Menu",
+                        tint = NeonPink,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Profile", color = Color.White) },
+                        onClick = {
+                            navController.navigate(Screen.Profile.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            menuExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Settings", color = Color.White) },
+                        onClick = {
+                            navController.navigate(Screen.Settings.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            menuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+    )
 }
 
 /* -------------------- Bottom Navigation -------------------- */
