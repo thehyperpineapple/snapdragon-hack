@@ -56,43 +56,305 @@ def create_app():
     # Root endpoint
     @app.route('/', methods=['GET'])
     def root():
-        """API documentation endpoint."""
+        """API documentation endpoint with all routes and sample outputs."""
+        routes_docs = """
+# API Routes Documentation
+
+## Health Check
+### app.health_check GET /health
+```json
+{
+  "status": "ok",
+  "service": "nutrition-workout-api"
+}
+```
+
+## Authentication & User Management
+
+### auth.register_user POST /users/register
+```json
+{
+  "user_id": "abc123",
+  "email": "user@example.com",
+  "username": "johndoe",
+  "message": "User registered successfully"
+}
+```
+
+### auth.get_user_route GET /users/<user_id>
+```json
+{
+  "user_id": "abc123",
+  "email": "user@example.com",
+  "username": "johndoe",
+  "created_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### auth.delete_user_route DELETE /users/<user_id>
+```json
+{
+  "message": "User deleted successfully"
+}
+```
+
+## Health Profile Management
+
+### user.create_health_profile POST /users/<user_id>/health
+```json
+{
+  "message": "Health profile created",
+  "profile": {
+    "weight": 75.5,
+    "height": 180,
+    "age": 28,
+    "gender": "male",
+    "activity_level": "moderate",
+    "fitness_goal": "weight_loss",
+    "bmi": 23.3
+  }
+}
+```
+
+### user.get_health_profile GET /users/<user_id>/health
+```json
+{
+  "profile": {
+    "weight": 75.5,
+    "height": 180,
+    "age": 28,
+    "gender": "male",
+    "activity_level": "moderate",
+    "fitness_goal": "weight_loss",
+    "bmi": 23.3
+  }
+}
+```
+
+### user.update_health_profile PUT /users/<user_id>/health
+```json
+{
+  "message": "Health profile updated",
+  "updated_fields": ["weight", "bmi"]
+}
+```
+
+### user.remove_health_profile DELETE /users/<user_id>/health
+```json
+{
+  "message": "Health profile deleted"
+}
+```
+
+## Nutrition Profile Management
+
+### user.create_nutrition_profile POST /users/<user_id>/nutrition
+```json
+{
+  "message": "Nutrition profile created",
+  "nutrition": {
+    "allergies": ["peanuts"],
+    "diet_type": "vegetarian",
+    "calorie_goal": 2000,
+    "meals_per_day": 4
+  }
+}
+```
+
+### user.get_nutrition_profile GET /users/<user_id>/nutrition
+```json
+{
+  "nutrition": {
+    "allergies": ["peanuts"],
+    "diet_type": "vegetarian",
+    "calorie_goal": 2000,
+    "protein_goal": 150,
+    "carb_goal": 250,
+    "fat_goal": 65,
+    "meals_per_day": 4
+  }
+}
+```
+
+### user.update_nutrition_profile PUT /users/<user_id>/nutrition
+```json
+{
+  "message": "Nutrition profile updated",
+  "updated_fields": ["calorie_goal"]
+}
+```
+
+### user.remove_nutrition_profile DELETE /users/<user_id>/nutrition
+```json
+{
+  "message": "Nutrition profile deleted"
+}
+```
+
+## AI-Powered Plan Management
+
+### plan.create_user_plan_ai POST /users/<user_id>/plan
+```json
+{
+  "message": "Plan created successfully",
+  "plan_id": "plan_xyz789",
+  "plan": {
+    "plan_type": "combined",
+    "ai_generated": true,
+    "generation_method": "npu_llm",
+    "diet": [
+      {
+        "weekName": "Week 1",
+        "meals": {
+          "breakfast": {"name": "Oatmeal with Berries", "calories": 350},
+          "lunch": {"name": "Grilled Chicken Salad", "calories": 450}
+        }
+      }
+    ],
+    "workouts": [
+      {
+        "weekName": "Week 1",
+        "exercises": [
+          {"workoutId": "w1", "name": "Push-ups", "sets": 3, "reps": 12}
+        ]
+      }
+    ]
+  }
+}
+```
+
+### plan.validate_user_plan POST /users/<user_id>/plan/validate
+```json
+{
+  "validation": {
+    "overall_score": 8.5,
+    "recommendations": ["Increase protein intake", "Add rest days"],
+    "warnings": [],
+    "alignment_with_goals": "good"
+  },
+  "timestamp": "now"
+}
+```
+
+### plan.adjust_user_plan PUT /users/<user_id>/plan/adjust
+```json
+{
+  "message": "Plan adjusted successfully",
+  "plan": {
+    "workouts": [
+      {
+        "weekName": "Week 1",
+        "exercises": [
+          {"workoutId": "w1", "name": "Modified Push-ups", "sets": 2, "reps": 10}
+        ]
+      }
+    ]
+  }
+}
+```
+
+### plan.adjust_workout_plan PUT /users/<user_id>/plan/workout/adjust
+```json
+{
+  "message": "Workout plan adjusted for Week 1",
+  "week": "Week 1",
+  "adjusted_count": 3,
+  "adjusted_exercises": [
+    {"workoutId": "w4", "name": "Light Cardio", "sets": 1, "duration": "20min"}
+  ]
+}
+```
+
+### plan.adjust_nutrition_plan PUT /users/<user_id>/plan/nutrition/adjust
+```json
+{
+  "message": "Nutrition plan adjusted for Week 1",
+  "week": "Week 1",
+  "calorie_adjustment": -500,
+  "adjusted_meals": {
+    "Wednesday": {"breakfast": {"name": "Egg Whites", "calories": 200}},
+    "Thursday": {"lunch": {"name": "Salad", "calories": 350}}
+  }
+}
+```
+
+## Daily Tracking
+
+### tracking.update_meals POST /users/<user_id>/tracking/meals
+```json
+{
+  "message": "Meal logged successfully",
+  "date": "2024-01-15",
+  "meal_type": "breakfast",
+  "total_calories": 300
+}
+```
+
+### tracking.update_workout POST /users/<user_id>/tracking/workout
+```json
+{
+  "message": "Workout logged successfully",
+  "date": "2024-01-15",
+  "completed": true,
+  "duration_minutes": 45
+}
+```
+
+### tracking.get_daily_log GET /users/<user_id>/tracking/daily?date=2024-01-15
+```json
+{
+  "date": "2024-01-15",
+  "daily_log": {
+    "meals": {
+      "breakfast": [{"name": "Oatmeal", "calories": 300}],
+      "lunch": [{"name": "Salad", "calories": 400}]
+    },
+    "workout": {
+      "completed": true,
+      "exercises": [{"name": "Push-ups", "sets": 3, "reps": 12}],
+      "duration_minutes": 45
+    },
+    "water_ml": 2000
+  }
+}
+```
+
+### tracking.get_tracking_history GET /users/<user_id>/tracking/history?limit=7
+```json
+{
+  "daily_logs": [
+    {
+      "date": "2024-01-15",
+      "meals": {},
+      "workout": {"completed": true}
+    }
+  ],
+  "total": 7
+}
+```
+
+### tracking.update_water_intake POST /users/<user_id>/tracking/water
+```json
+{
+  "water_intake_ml": 2250
+}
+```
+
+### tracking.update_wellness POST /users/<user_id>/tracking/wellness
+```json
+{
+  "wellness": {
+    "sleep_hours": 7.5,
+    "mood": "good",
+    "energy_level": 4
+  }
+}
+```
+"""
         return jsonify({
             'name': 'Nutrition & Workout API',
             'version': '1.0.0',
-            'endpoints': {
-                'auth': {
-                    'POST /users/register': 'Register a new user',
-                    'GET /users/<user_id>': 'Get user information',
-                    'DELETE /users/<user_id>': 'Delete user account'
-                },
-                'health_profile': {
-                    'POST /users/<user_id>/health': 'Create health profile',
-                    'GET /users/<user_id>/health': 'Get health profile',
-                    'PUT /users/<user_id>/health': 'Update health profile',
-                    'DELETE /users/<user_id>/health': 'Delete health profile'
-                },
-                'nutrition_profile': {
-                    'POST /users/<user_id>/nutrition': 'Create nutrition profile',
-                    'GET /users/<user_id>/nutrition': 'Get nutrition profile',
-                    'PUT /users/<user_id>/nutrition': 'Update nutrition profile',
-                    'DELETE /users/<user_id>/nutrition': 'Delete nutrition profile'
-                },
-                'plans': {
-                    'POST /users/<user_id>/plan': 'Create diet/workout plan',
-                    'GET /users/<user_id>/plan': 'Get active plan',
-                    'PUT /users/<user_id>/plan': 'Update plan',
-                    'DELETE /users/<user_id>/plan': 'Delete plan'
-                },
-                'tracking': {
-                    'POST /users/<user_id>/tracking/meals': 'Log meal',
-                    'POST /users/<user_id>/tracking/workout': 'Log workout',
-                    'GET /users/<user_id>/tracking/daily': 'Get daily log',
-                    'GET /users/<user_id>/tracking/history': 'Get tracking history',
-                    'POST /users/<user_id>/tracking/water': 'Log water intake',
-                    'POST /users/<user_id>/tracking/wellness': 'Log wellness metrics'
-                }
-            }
+            'documentation': routes_docs
         }), 200
     
     # Error handlers
