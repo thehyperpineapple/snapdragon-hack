@@ -1,6 +1,6 @@
 """
-Ollama Inference Engine
-Simple LLM inference using local Ollama server
+Gemini Inference Engine
+Fast LLM inference using Google's Gemini API
 """
 
 import os
@@ -8,15 +8,14 @@ import logging
 import threading
 import hashlib
 from typing import Dict, Optional
-import requests
+import google.generativeai as genai
 
 logger = logging.getLogger('ai')
 
 
-class OllamaEngine:
+class GeminiEngine:
     """
-    Inference engine using local Ollama server.
-    Drop-in replacement for the NPU engine with the same interface.
+    Inference engine using Google's Gemini API.
     """
 
     _instance = None
@@ -27,25 +26,41 @@ class OllamaEngine:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super(OllamaEngine, cls).__new__(cls)
+                    cls._instance = super(GeminiEngine, cls).__new__(cls)
                     cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
-        """Initialize the Ollama engine."""
+        """Initialize the Gemini engine."""
         if self._initialized:
             return
 
         logger.info("=" * 60)
-        logger.info("Initializing Ollama Inference Engine")
+        logger.info("Initializing Gemini Inference Engine")
         logger.info("=" * 60)
 
         # Configuration from environment
-        self.base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-        self.model = os.getenv("OLLAMA_MODEL", "llama3.2")
-        self.max_new_tokens = int(os.getenv("MAX_NEW_TOKENS", "512"))
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is required")
+
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        self.max_new_tokens = int(os.getenv("MAX_NEW_TOKENS", "1024"))
         self.temperature = float(os.getenv("TEMPERATURE", "0.7"))
-        self.timeout = int(os.getenv("OLLAMA_TIMEOUT", "120"))
+        self.timeout = int(os.getenv("GEMINI_TIMEOUT", "60"))
+
+        # Configure the API
+        genai.configure(api_key=self.api_key)
+
+        # Initialize the model
+        self.model = genai.GenerativeModel(
+            model_name=self.model_name,
+            generation_config={
+                "temperature": self.temperature,
+                "max_output_tokens": self.max_new_tokens,
+                "top_p": 0.9,
+            }
+        )
 
         # Simple response cache
         self._cache: Dict[str, str] = {}
@@ -56,34 +71,24 @@ class OllamaEngine:
         self._test_connection()
 
         self._initialized = True
-        logger.info(f"Model: {self.model}")
-        logger.info("Ollama Inference Engine initialized successfully")
+        logger.info(f"Model: {self.model_name}")
+        logger.info("Gemini Inference Engine initialized successfully")
         logger.info("=" * 60)
 
     def _test_connection(self):
-        """Test connection to Ollama server."""
+        """Test connection to Gemini API."""
         try:
-            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
-            if response.status_code == 200:
-                models = response.json().get("models", [])
-                model_names = [m.get("name", "") for m in models]
-                logger.info(f"Connected to Ollama. Available models: {model_names}")
-
-                # Check if configured model is available
-                if not any(self.model in name for name in model_names):
-                    logger.warning(
-                        f"Model '{self.model}' not found. "
-                        f"Run: ollama pull {self.model}"
-                    )
-            else:
-                logger.warning(f"Ollama server responded with status {response.status_code}")
-        except requests.exceptions.ConnectionError:
-            logger.warning(
-                f"Cannot connect to Ollama at {self.base_url}. "
-                "Make sure Ollama is running: ollama serve"
+            # Quick test with a simple prompt
+            response = self.model.generate_content(
+                "Say 'OK' if you are working.",
+                generation_config={"max_output_tokens": 10}
             )
+            if response.text:
+                logger.info(f"Connected to Gemini API. Model: {self.model_name}")
+            else:
+                logger.warning("Gemini API returned empty response")
         except Exception as e:
-            logger.warning(f"Error testing Ollama connection: {e}")
+            logger.warning(f"Error testing Gemini connection: {e}")
 
     def _get_cache_key(self, prompt: str, max_new_tokens: int, temperature: float) -> str:
         """Generate a cache key for the request."""
@@ -99,13 +104,13 @@ class OllamaEngine:
         use_cache: bool = True
     ) -> str:
         """
-        Generate text using Ollama.
+        Generate text using Gemini.
 
         Args:
             prompt: Input text prompt
             max_new_tokens: Maximum tokens to generate
             temperature: Sampling temperature
-            top_p: Nucleus sampling threshold (passed to Ollama)
+            top_p: Nucleus sampling threshold
             use_cache: Whether to use response cache
 
         Returns:
@@ -115,7 +120,7 @@ class OllamaEngine:
         temperature = temperature or self.temperature
         top_p = top_p or 0.9
 
-        logger.info(f"AI_INFERENCE: Starting generation with Ollama model={self.model}")
+        logger.info(f"AI_INFERENCE: Starting generation with Gemini model={self.model_name}")
 
         # Check cache
         if use_cache:
@@ -127,28 +132,30 @@ class OllamaEngine:
             self._cache_misses += 1
 
         try:
-            response = requests.post(
-                f"{self.base_url}/api/generate",
-                json={
-                    "model": self.model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "num_predict": max_new_tokens,
-                        "temperature": temperature,
-                        "top_p": top_p
-                    }
-                },
-                timeout=self.timeout
+            # Create generation config for this request
+            generation_config = {
+                "temperature": temperature,
+                "max_output_tokens": max_new_tokens,
+                "top_p": top_p,
+            }
+
+            response = self.model.generate_content(
+                prompt,
+                generation_config=generation_config
             )
 
-            if response.status_code != 200:
-                error_msg = f"Ollama API error: {response.status_code} - {response.text}"
+            # Handle the response
+            if not response.text:
+                # Check if blocked by safety filters
+                if response.prompt_feedback:
+                    error_msg = f"Gemini blocked the prompt: {response.prompt_feedback}"
+                    logger.error(f"AI_INFERENCE: {error_msg}")
+                    raise RuntimeError(error_msg)
+                error_msg = "Gemini returned empty response"
                 logger.error(f"AI_INFERENCE: {error_msg}")
                 raise RuntimeError(error_msg)
 
-            result = response.json()
-            generated_text = result.get("response", "")
+            generated_text = response.text
 
             # Cache the result
             if use_cache:
@@ -160,30 +167,18 @@ class OllamaEngine:
             )
             return generated_text
 
-        except requests.exceptions.Timeout:
-            error_msg = f"Ollama request timed out after {self.timeout}s"
-            logger.error(f"AI_INFERENCE: {error_msg}")
-            raise RuntimeError(error_msg)
-        except requests.exceptions.ConnectionError:
-            error_msg = f"Cannot connect to Ollama at {self.base_url}"
-            logger.error(f"AI_INFERENCE: {error_msg}")
-            raise RuntimeError(error_msg)
         except Exception as e:
             logger.error(f"AI_INFERENCE: Generation error: {e}", exc_info=True)
             raise
 
     def health_check(self) -> Dict:
         """
-        Perform health check on the Ollama engine.
+        Perform health check on the Gemini engine.
 
         Returns:
             Status dictionary with engine metrics
         """
         try:
-            # Test Ollama connection
-            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
-            ollama_status = "connected" if response.status_code == 200 else "error"
-
             # Test inference
             test_output = self.generate(
                 "Say 'OK' if you are working.",
@@ -196,10 +191,8 @@ class OllamaEngine:
 
             return {
                 "status": "healthy",
-                "engine": "Ollama",
-                "model": self.model,
-                "base_url": self.base_url,
-                "ollama_status": ollama_status,
+                "engine": "Gemini",
+                "model": self.model_name,
                 "test_inference": "passed",
                 "test_output": test_output[:100],
                 "cache_stats": {
@@ -213,16 +206,15 @@ class OllamaEngine:
             return {
                 "status": "unhealthy",
                 "error": str(e),
-                "engine": "Ollama",
-                "model": self.model
+                "engine": "Gemini",
+                "model": self.model_name
             }
 
     def get_model_info(self) -> Dict:
         """Return model metadata."""
         return {
-            "engine": "Ollama",
-            "model": self.model,
-            "base_url": self.base_url,
+            "engine": "Gemini",
+            "model": self.model_name,
             "max_new_tokens": self.max_new_tokens,
             "temperature": self.temperature,
             "timeout": self.timeout
@@ -236,24 +228,15 @@ class OllamaEngine:
         logger.info("AI_CACHE: Response cache cleared")
 
     def __repr__(self) -> str:
-        return f"OllamaEngine(model={self.model}, base_url={self.base_url})"
+        return f"GeminiEngine(model={self.model_name})"
 
 
 # Singleton instance getter
-def get_ollama_engine() -> OllamaEngine:
+def get_gemini_engine() -> GeminiEngine:
     """
-    Get the singleton Ollama engine instance.
+    Get the singleton Gemini engine instance.
 
     Returns:
-        Initialized OllamaEngine instance
+        Initialized GeminiEngine instance
     """
-    return OllamaEngine()
-
-
-# Alias for backward compatibility
-def get_npu_engine() -> OllamaEngine:
-    """
-    Backward-compatible alias for get_ollama_engine.
-    Routes using get_npu_engine() will work without changes.
-    """
-    return get_ollama_engine()
+    return GeminiEngine()

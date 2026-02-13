@@ -1,19 +1,18 @@
 """
 AI Layer for LLM Inference
-Uses Ollama for local model serving
+Uses Google Gemini API for fast inference
 """
 
-from .inference.ollama_engine import OllamaEngine, get_ollama_engine, get_npu_engine
+from .inference.gemini_engine import GeminiEngine, get_gemini_engine
 from .prompts import plan_prompts, nutrition_prompts, health_prompts
 
 
 __all__ = [
-    'OllamaEngine',
-    'get_ollama_engine',
-    'get_npu_engine',  # Backward compatibility alias
+    'GeminiEngine',
+    'get_gemini_engine',
     'plan_prompts',
     'nutrition_prompts',
     'health_prompts'
 ]
 
-__version__ = '2.0.0'
+__version__ = '3.0.0'

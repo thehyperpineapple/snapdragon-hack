@@ -26,7 +26,7 @@ This document summarizes all the logging that has been added to the backend appl
 - **routes/user_ai.py** - Health and nutrition AI analysis logging
 
 #### AI Components
-- **ai/inference/npu_engine.py** - Enhanced inference logging with performance metrics
+- **ai/inference/gemini_engine.py** - Enhanced inference logging with performance metrics
 - **ai/inference/cache_manager.py** - Detailed cache hit/miss tracking
 
 ## Logging Categories
@@ -43,7 +43,7 @@ Tracks all LLM inference operations:
 **Files affected:**
 - routes/plan_ai.py
 - routes/user_ai.py
-- ai/inference/npu_engine.py
+- ai/inference/gemini_engine.py
 
 ### 2. AI Usage Tracking (`AI_USAGE:` and `AI_NON_USAGE:`)
 Tracks when AI is invoked vs. when fallbacks are used:

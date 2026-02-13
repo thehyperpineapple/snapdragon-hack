@@ -6,7 +6,8 @@ from datetime import date
 from flask import Blueprint, jsonify, request
 from services.tracking_service import (
     update_meal_completion, toggle_workout_status,
-    log_daily_meal, log_daily_workout
+    log_daily_meal, log_daily_workout,
+    log_food_items, get_food_log, get_calorie_summary
 )
 from extensions import db
 
@@ -225,3 +226,71 @@ def update_wellness(user_id):
         return jsonify({'wellness': wellness}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@tracking_bp.route('/<user_id>/tracking/food-log', methods=['POST'])
+def add_food_log(user_id):
+    """
+    Log food items the user actually ate.
+    
+    Request Body:
+        {
+            "date": "2024-01-15",
+            "meal_type": "breakfast",
+            "items": [
+                {
+                    "name": "brisket",
+                    "calories": "300",
+                    "serving_size_g": 453.592,
+                    "fat_total_g": 82.9,
+                    "protein_g": "50",
+                    "carbohydrates_total_g": 0,
+                    "fiber_g": 0,
+                    "sugar_g": 0
+                }
+            ]
+        }
+    """
+    data = request.get_json(silent=True) or {}
+    
+    meal_type = data.get('meal_type', 'snacks')
+    items = data.get('items', [])
+    log_date = data.get('date', today())
+    
+    if not items:
+        return jsonify({'error': 'items list is required'}), 400
+    
+    result, status = log_food_items(user_id, log_date, meal_type, items)
+    return jsonify(result), status
+
+
+@tracking_bp.route('/<user_id>/tracking/food-log', methods=['GET'])
+def get_food_log_route(user_id):
+    """
+    Get food log for a date.
+    Query params: ?date=2024-01-15 (defaults to today)
+    """
+    log_date = request.args.get('date', today())
+    result, status = get_food_log(user_id, log_date)
+    return jsonify(result), status
+
+
+@tracking_bp.route('/<user_id>/tracking/calories', methods=['GET'])
+def get_calorie_status(user_id):
+    """
+    Get calorie summary: goal, consumed, remaining for a date.
+    Query params: ?date=2024-01-15 (defaults to today)
+    
+    Returns:
+        {
+            "date": "2024-01-15",
+            "calorie_goal": 2000,
+            "calories_consumed": 1200,
+            "calories_remaining": 800,
+            "percentage_consumed": 60.0,
+            "total_items": 5
+        }
+    """
+    log_date = request.args.get('date', today())
+    result, status = get_calorie_summary(user_id, log_date)
+    return jsonify(result), status

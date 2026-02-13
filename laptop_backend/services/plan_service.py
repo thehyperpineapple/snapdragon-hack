@@ -130,10 +130,10 @@ def update_week_workouts(user_id, week_name, new_exercises):
         doc_data = doc.to_dict()
         workouts = doc_data.get("workouts", [])
 
-        # Find and update the week
+        # Find and update the week (support both 'week' and 'weekName' keys)
         week_found = False
         for week in workouts:
-            if week.get("weekName") == week_name:
+            if week.get("week") == week_name or week.get("weekName") == week_name:
                 week["exercises"] = new_exercises
                 week_found = True
                 logger.debug(f"DB_WRITE: Found week {week_name}, updating {len(new_exercises)} exercises")
@@ -176,11 +176,17 @@ def update_week_meals(user_id, week_name, new_meals):
         doc_data = doc.to_dict()
         diet = doc_data.get("diet", [])
 
-        # Find and update the week
+        # Find and update the week (support both 'week' and 'weekName' keys)
         week_found = False
         for week in diet:
-            if week.get("weekName") == week_name:
-                week["meals"] = new_meals
+            if week.get("week") == week_name or week.get("weekName") == week_name:
+                # Update meal fields directly on the week object (new format)
+                for meal_type in ['breakfast', 'lunch', 'dinner']:
+                    if meal_type in new_meals:
+                        week[meal_type] = new_meals[meal_type]
+                # Also support old 'meals' format
+                if 'meals' in week:
+                    week["meals"] = new_meals
                 week_found = True
                 logger.debug(f"DB_WRITE: Found week {week_name}, updating meals")
                 break

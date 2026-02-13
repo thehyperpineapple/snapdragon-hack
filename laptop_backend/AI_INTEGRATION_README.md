@@ -11,7 +11,7 @@ laptop_backend/
 ├── ai/                          # AI Layer (NEW)
 │   ├── __init__.py
 │   ├── inference/              # NPU inference engine
-│   │   ├── npu_engine.py      # Core NPU inference logic
+│   │   ├── gemini_engine.py   # Core Gemini inference logic
 │   │   └── cache_manager.py   # KV cache management
 │   ├── prompts/                # Structured prompts
 │   │   ├── plan_prompts.py    # Diet/workout generation
@@ -261,10 +261,10 @@ curl http://localhost:5000/ai/health
 ### Using NPU Engine Directly
 
 ```python
-from ai import get_npu_engine
+from ai import get_gemini_engine
 
 # Get singleton engine instance
-engine = get_npu_engine()
+engine = get_gemini_engine()
 
 # Generate text
 response = engine.generate(
@@ -290,7 +290,7 @@ print(f"Cache hit rate: {stats['hit_rate']}")
 
 ```python
 from ai.prompts import plan_prompts
-from ai import get_npu_engine
+from ai import get_gemini_engine
 
 # Prepare user data
 user_context = {
@@ -314,7 +314,7 @@ user_context = {
 prompt = plan_prompts.generate_plan_prompt(user_context, "workout")
 
 # Get AI response
-engine = get_npu_engine()
+engine = get_gemini_engine()
 plan = engine.generate(prompt, max_new_tokens=1000)
 ```
 

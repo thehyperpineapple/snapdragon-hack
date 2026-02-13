@@ -98,7 +98,7 @@ echo ""
 echo "Step 7: Testing AI layer..."
 python3 - <<EOF
 try:
-    from ai import get_npu_engine
+    from ai import get_gemini_engine
     print("${GREEN}✓ AI layer imports successfully${NC}")
 except ImportError as e:
     print("${RED}✗ AI layer import failed: {e}${NC}")

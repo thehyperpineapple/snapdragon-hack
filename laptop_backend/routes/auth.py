@@ -5,7 +5,7 @@ Authentication & User Management Blueprint.
 from flask import Blueprint, jsonify, request
 from services.user_service import register_user_entry, get_user, delete_user, login_user_entry
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/users')
+auth_bp = Blueprint('auth', __name__)
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -36,14 +36,14 @@ def register_user():
     return jsonify(result), status
 
 
-@auth_bp.route('/<user_id>', methods=['GET'])
+@auth_bp.route('/users/<user_id>', methods=['GET'])
 def get_user_route(user_id):
     """Get user by ID."""
     result, status = get_user(user_id)
     return jsonify(result), status
 
 
-@auth_bp.route('/<user_id>', methods=['DELETE'])
+@auth_bp.route('/users/<user_id>', methods=['DELETE'])
 def delete_user_route(user_id):
     """Delete user account."""
     result, status = delete_user(user_id)
@@ -72,7 +72,7 @@ def login_user():
     return jsonify(result), status
 
 
-@auth_bp.route('/logout', methods=['POST'])
+@auth_bp.route('/users/logout', methods=['POST'])
 def logout_user():
     """
     Logout user.

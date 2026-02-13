@@ -13,7 +13,7 @@ from services.health_service import (
 from services.nutrition_service import (
     post_nutrition_data, get_nutrition_data, update_nutrition_data, delete_nutrition_data
 )
-from ai import get_npu_engine
+from ai import get_gemini_engine
 from ai.prompts import health_prompts, nutrition_prompts
 from ai.utils.model_utils import format_response, format_error_response
 
@@ -74,8 +74,8 @@ def update_health_profile_ai(user_id):
             prompt = health_prompts.analyze_health_metrics_prompt(health_data)
 
             # Get AI analysis
-            npu_engine = get_npu_engine()
-            raw_output = npu_engine.generate(
+            ai_engine = get_gemini_engine()
+            raw_output = ai_engine.generate(
                 prompt=prompt,
                 max_new_tokens=800,
                 temperature=0.6,
@@ -126,8 +126,8 @@ def analyze_health_metrics(user_id):
         prompt = health_prompts.analyze_health_metrics_prompt(health_data)
 
         # Get AI analysis
-        npu_engine = get_npu_engine()
-        raw_output = npu_engine.generate(
+        ai_engine = get_gemini_engine()
+        raw_output = ai_engine.generate(
             prompt=prompt,
             max_new_tokens=1000,
             temperature=0.5,
@@ -203,8 +203,8 @@ def update_nutrition_profile_ai(user_id):
             )
 
             # Get AI analysis
-            npu_engine = get_npu_engine()
-            raw_output = npu_engine.generate(
+            ai_engine = get_gemini_engine()
+            raw_output = ai_engine.generate(
                 prompt=prompt,
                 max_new_tokens=1000,
                 temperature=0.6,
@@ -261,8 +261,8 @@ def analyze_nutrition_profile(user_id):
         )
 
         # Get AI analysis
-        npu_engine = get_npu_engine()
-        raw_output = npu_engine.generate(
+        ai_engine = get_gemini_engine()
+        raw_output = ai_engine.generate(
             prompt=prompt,
             max_new_tokens=1200,
             temperature=0.5,
@@ -335,8 +335,8 @@ def get_meal_suggestions(user_id):
         )
 
         # Get AI suggestions
-        npu_engine = get_npu_engine()
-        raw_output = npu_engine.generate(
+        ai_engine = get_gemini_engine()
+        raw_output = ai_engine.generate(
             prompt=prompt,
             max_new_tokens=800,
             temperature=0.8,  # Higher temp for variety

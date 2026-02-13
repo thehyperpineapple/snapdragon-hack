@@ -234,7 +234,7 @@ ai/
 ├── __init__.py
 ├── inference/
 │   ├── __init__.py
-│   ├── npu_engine.py       # NPU inference engine
+│   ├── gemini_engine.py    # Gemini inference engine
 │   └── cache_manager.py    # KV cache management
 ├── prompts/
 │   ├── __init__.py
@@ -271,8 +271,8 @@ def create_app():
     # NPU health check endpoint
     @app.route('/ai/health', methods=['GET'])
     def ai_health_check():
-        from ai import get_npu_engine
-        engine = get_npu_engine()
+        from ai import get_gemini_engine
+        engine = get_gemini_engine()
         return jsonify(engine.health_check()), 200
 
     return app
@@ -286,8 +286,8 @@ Add to `app.py`:
 # Before app.run()
 if __name__ == '__main__':
     print("Initializing NPU Inference Engine...")
-    from ai import get_npu_engine
-    engine = get_npu_engine()
+    from ai import get_gemini_engine
+    engine = get_gemini_engine()
     print("✓ NPU Engine ready")
     print(engine.get_model_info())
 
@@ -468,9 +468,9 @@ ENABLE_PROFILING=false
 
 ```bash
 python - <<EOF
-from ai import get_npu_engine
+from ai import get_gemini_engine
 
-engine = get_npu_engine()
+engine = get_gemini_engine()
 print(engine.get_model_info())
 
 # Test generation

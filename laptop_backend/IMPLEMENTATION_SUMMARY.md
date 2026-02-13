@@ -24,7 +24,7 @@ This document provides an overview of the complete NPU integration for running a
 │         │         AI Layer (ai/)                    │      │
 │         ├───────────────────────────────────────────┤      │
 │         │  • Prompt Templates (prompts/)           │      │
-│         │  • NPU Engine (inference/npu_engine.py)  │      │
+│         │  • Gemini Engine (inference/gemini_engine.py)  │      │
 │         │  • KV Cache (inference/cache_manager.py) │      │
 │         │  • Utilities (utils/model_utils.py)      │      │
 │         └────────────────────┬──────────────────────┘      │
@@ -51,7 +51,7 @@ This document provides an overview of the complete NPU integration for running a
 ### Core AI Layer (`ai/`)
 
 #### 1. **Inference Engine** (`ai/inference/`)
-- **`npu_engine.py`** (485 lines)
+- **`gemini_engine.py`**
   - Singleton NPU inference engine
   - ONNX Runtime integration with QNN EP
   - HTP (Hexagon Tensor Processor) backend configuration
@@ -288,7 +288,7 @@ routes/
 ### Unit Tests (Recommended)
 ```python
 # Test NPU engine
-python -m pytest tests/test_npu_engine.py
+python -m pytest tests/test_gemini_engine.py
 
 # Test prompt templates
 python -m pytest tests/test_prompts.py
@@ -312,7 +312,7 @@ NPU_MOCK_MODE=true python -m pytest
 FLASK_DEBUG=true python app.py
 
 # Monitor logs
-tail -f qnn_logs/npu_engine.log
+tail -f qnn_logs/gemini_engine.log
 ```
 
 ---

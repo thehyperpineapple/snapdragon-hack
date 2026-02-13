@@ -6,9 +6,9 @@ flask-cors==4.0.0
 gunicorn==21.2.0
 markdown2==2.4.12
 
-# AI/ML Dependencies for Qualcomm NPU Integration
-onnxruntime-qnn>=1.16.0  # QNN Execution Provider for Snapdragon NPU
-transformers>=4.35.0     # HuggingFace transformers for tokenization
-torch>=2.0.0            # PyTorch (required by transformers)
+# AI Dependencies - Google Gemini API
+google-generativeai>=0.3.0
+
+# Utility Dependencies
 numpy>=1.24.0           # Numerical operations
-optimum[onnxruntime]>=1.14.0  # ONNX model optimization
+requests>=2.31.0        # HTTP requests
